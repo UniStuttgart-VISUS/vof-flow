@@ -1,0 +1,7 @@
+<RCC>
+    <qresource prefix="/icons">
+        <file>IconVofTracking.png</file>
+        <file>IconPlic.png</file>
+        <file>IconPlic3.png</file>
+    </qresource>
+</RCC>

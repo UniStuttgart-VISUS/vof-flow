@@ -1,0 +1,45 @@
+name: Build
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  linux:
+    name: Linux-Build
+    runs-on: ubuntu-22.04
+    container:
+      image: kitware/paraview_org-plugin-devel:5.12.0
+    env:
+      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true # nodejs 16 is required for CentOS 7
+    steps:
+      - name: Install dependencies
+        run: |
+          # Fix CentOS 7 EOL (https://serverfault.com/a/1161847)
+          sed -i s/mirror.centos.org/vault.centos.org/g /etc/yum.repos.d/CentOS-*.repo
+          sed -i s/^#.*baseurl=http/baseurl=http/g /etc/yum.repos.d/CentOS-*.repo
+          sed -i s/^mirrorlist=http/#mirrorlist=http/g /etc/yum.repos.d/CentOS-*.repo
+          yum -y install devtoolset-9
+      - uses: actions/checkout@v3 # glibc in container is too old for v4
+      - name: Configure
+        run: |
+          PARAVIEW_DIR=`find /builds/gitlab-kitware-sciviz-ci/build/install/lib/cmake -type d -regex "/builds/gitlab-kitware-sciviz-ci/build/install/lib/cmake/paraview-[0-9,.]*"`
+          scl enable devtoolset-9 -- cmake -S . -B ${{github.workspace}}/build -DParaView_DIR=$PARAVIEW_DIR -DCMAKE_BUILD_TYPE=Release
+      - name: Build
+        run: |
+          scl enable devtoolset-9 -- cmake --build ${{github.workspace}}/build --parallel 4
+      - name: Install
+        run: |
+          scl enable devtoolset-9 -- cmake --install ${{github.workspace}}/build --prefix ./install
+      - name: Cleanup
+        run: |
+          mv ./install/lib64 ./install/lib
+      - uses: actions/upload-artifact@v3 # glibc in container is too old for v4
+        with:
+          name: VofFlow
+          path: |
+            ./install/lib/paraview-5.12/plugins/VofFlow/VofFlow.so
+            ./install/bin/MaxVelocity
+            ./install/bin/PolyGap
+            ./install/bin/SeedGrid
+            ./install/bin/SmoothNormals

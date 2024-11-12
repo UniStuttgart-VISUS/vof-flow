@@ -1,0 +1,695 @@
+<ServerManagerConfiguration>
+    <ProxyGroup name="filters">
+        <SourceProxy name="VofTracking" class="vtkVofTracking" label="Vof Tracking">
+            <Documentation
+                long_help="Extract separation boundaries in VoF-datasets."
+                short_help="VoF separation boundaries.">
+            </Documentation>
+
+            <InputProperty
+                name="Input"
+                port_index="0"
+                command="SetInputConnection"
+                label="Input Grid">
+                <ProxyGroupDomain name="groups">
+                    <Group name="sources"/>
+                    <Group name="filters"/>
+                </ProxyGroupDomain>
+                <DataTypeDomain name="input_type">
+                    <DataType value="vtkRectilinearGrid"/>
+                </DataTypeDomain>
+                <InputArrayDomain
+                    attribute_type="cell"
+                    name="input_array_vof"
+                    number_of_components="1"/>
+                <InputArrayDomain
+                    attribute_type="cell"
+                    name="input_array_vof3"
+                    number_of_components="1"
+                    optional="1"/>
+                <InputArrayDomain
+                    attribute_type="cell"
+                    name="input_array_vof_norm"
+                    number_of_components="3"
+                    optional="1"/>
+                <InputArrayDomain
+                    attribute_type="cell"
+                    name="input_array_velocity"
+                    number_of_components="3"
+                    optional="1"/>
+                <InputArrayDomain
+                    attribute_type="cell"
+                    name="input_array_components_vof"
+                    number_of_components="1"
+                    optional="1"/>
+                <InputArrayDomain
+                    attribute_type="cell"
+                    name="input_array_components_vof3"
+                    number_of_components="1"
+                    optional="1"/>
+                <Documentation>
+                    Grid with VoF and velocity arrays.
+                </Documentation>
+            </InputProperty>
+
+            <IntVectorProperty
+                name="UseThreePhase"
+                label="Use Three Phase"
+                command="SetUseThreePhase"
+                number_of_elements="1"
+                default_values="0">
+                <BooleanDomain name="bool"/>
+            </IntVectorProperty>
+
+            <StringVectorProperty
+                name="SelectInputScalarsVof"
+                label="VoF"
+                command="SetInputArrayToProcess"
+                number_of_elements="5"
+                element_types="0 0 0 0 2"
+                animateable="0"
+                default_values="0">
+                <ArrayListDomain
+                    name="array_list"
+                    attribute_type="Scalars"
+                    input_domain_name="input_array_vof">
+                    <RequiredProperties>
+                        <Property name="Input" function="Input"/>
+                    </RequiredProperties>
+                </ArrayListDomain>
+                <Documentation>
+                    Volume of fluid field.
+                </Documentation>
+            </StringVectorProperty>
+            <StringVectorProperty
+                name="SelectInputScalarsVof3"
+                label="VoF3"
+                command="SetInputArrayToProcess"
+                number_of_elements="5"
+                element_types="0 0 0 0 2"
+                animateable="0"
+                default_values="1">
+                <ArrayListDomain
+                    name="array_list"
+                    attribute_type="Scalars"
+                    input_domain_name="input_array_vof3"
+                    none_string="None">
+                    <RequiredProperties>
+                        <Property name="Input" function="Input"/>
+                    </RequiredProperties>
+                </ArrayListDomain>
+                <Hints>
+                    <PropertyWidgetDecorator
+                        type="GenericDecorator"
+                        mode="visibility"
+                        property="UseThreePhase"
+                        value="1"/>
+                </Hints>
+                <Documentation>
+                    Volume of fluid field (three-phase).
+                </Documentation>
+            </StringVectorProperty>
+            <StringVectorProperty
+                name="SelectInputVectorsVofNorm"
+                label="VoF Norm"
+                command="SetInputArrayToProcess"
+                number_of_elements="5"
+                element_types="0 0 0 0 2"
+                animateable="0"
+                default_values="2">
+                <ArrayListDomain
+                    name="array_list"
+                    attribute_type="Vectors"
+                    input_domain_name="input_array_vof_norm"
+                    none_string="None">
+                    <RequiredProperties>
+                        <Property name="Input" function="Input"/>
+                    </RequiredProperties>
+                </ArrayListDomain>
+                <Hints>
+                    <PropertyWidgetDecorator
+                        type="GenericDecorator"
+                        mode="visibility"
+                        property="UseThreePhase"
+                        value="1"/>
+                </Hints>
+                <Documentation>
+                    VoF normals field (three-phase).
+                </Documentation>
+            </StringVectorProperty>
+            <StringVectorProperty
+                name="SelectInputVectorsVelocity"
+                label="Velocity"
+                command="SetInputArrayToProcess"
+                number_of_elements="5"
+                element_types="0 0 0 0 2"
+                animateable="0"
+                default_values="3">
+                <ArrayListDomain
+                    name="array_list"
+                    attribute_type="Vectors"
+                    input_domain_name="input_array_velocity"
+                    none_string="None">
+                    <RequiredProperties>
+                        <Property name="Input" function="Input"/>
+                    </RequiredProperties>
+                </ArrayListDomain>
+                <Documentation>
+                    Velocity field.
+                </Documentation>
+            </StringVectorProperty>
+
+            <IntVectorProperty
+                name="UseComponents"
+                label="Use Components"
+                command="SetUseComponents"
+                number_of_elements="1"
+                default_values="0">
+                <BooleanDomain name="bool"/>
+            </IntVectorProperty>
+
+            <StringVectorProperty
+                name="SelectInputScalarsComponentsVof"
+                label="Components VoF"
+                command="SetInputArrayToProcess"
+                number_of_elements="5"
+                element_types="0 0 0 0 2"
+                animateable="0"
+                default_values="4">
+                <ArrayListDomain
+                    name="array_list"
+                    attribute_type="Scalars"
+                    input_domain_name="input_array_components_vof"
+                    none_string="None">
+                    <RequiredProperties>
+                        <Property name="Input" function="Input"/>
+                    </RequiredProperties>
+                </ArrayListDomain>
+                <Hints>
+                    <PropertyWidgetDecorator
+                        type="GenericDecorator"
+                        mode="visibility"
+                        property="UseComponents"
+                        value="1"/>
+                </Hints>
+                <Documentation>
+                    Component label field (VoF).
+                </Documentation>
+            </StringVectorProperty>
+            <StringVectorProperty
+                name="SelectInputScalarsComponentsVof3"
+                label="Components VoF3"
+                command="SetInputArrayToProcess"
+                number_of_elements="5"
+                element_types="0 0 0 0 2"
+                animateable="0"
+                default_values="5">
+                <ArrayListDomain
+                    name="array_list"
+                    attribute_type="Scalars"
+                    input_domain_name="input_array_components_vof3"
+                    none_string="None">
+                    <RequiredProperties>
+                        <Property name="Input" function="Input"/>
+                    </RequiredProperties>
+                </ArrayListDomain>
+                <Hints>
+                    <PropertyWidgetDecorator type="CompositeDecorator">
+                        <Expression type="and">
+                            <PropertyWidgetDecorator
+                                type="GenericDecorator"
+                                mode="visibility"
+                                property="UseComponents"
+                                value="1"/>
+                            <PropertyWidgetDecorator
+                                type="GenericDecorator"
+                                mode="visibility"
+                                property="UseThreePhase"
+                                value="1"/>
+                        </Expression>
+                    </PropertyWidgetDecorator>
+                </Hints>
+                <Documentation>
+                    Component label field (VoF3).
+                </Documentation>
+            </StringVectorProperty>
+
+            <IntVectorProperty
+                name="UseTargetTimeStep"
+                label="Use Target Time Step"
+                command="SetUseTargetTimeStep"
+                number_of_elements="1"
+                default_values="0">
+                <BooleanDomain name="bool"/>
+            </IntVectorProperty>
+
+            <IntVectorProperty
+                name="InitTimeStep"
+                label="Init Time Step"
+                command="SetInitTimeStep"
+                number_of_elements="1"
+                default_values="0">
+            </IntVectorProperty>
+
+            <IntVectorProperty
+                name="TargetTimeStep"
+                label="Target Time Step"
+                command="SetTargetTimeStep"
+                number_of_elements="1"
+                default_values="0">
+                <Hints>
+                    <PropertyWidgetDecorator
+                        type="GenericDecorator"
+                        mode="visibility"
+                        property="UseTargetTimeStep"
+                        value="1"/>
+                </Hints>
+            </IntVectorProperty>
+
+            <IntVectorProperty
+                name="Refinement"
+                label="Refinement"
+                command="SetRefinement"
+                number_of_elements="1"
+                default_values="0">
+                <Documentation>
+                    Number of seed points per cell = (r+1)^3.
+                </Documentation>
+            </IntVectorProperty>
+
+            <IntVectorProperty
+                name="NeighborCorrection"
+                label="Neighbor Correction"
+                command="SetNeighborCorrection"
+                number_of_elements="1"
+                default_values="1">
+                <BooleanDomain name="bool"/>
+            </IntVectorProperty>
+
+            <IntVectorProperty
+                name="CellCorrection"
+                label="Cell Correction"
+                command="SetCellCorrection"
+                number_of_elements="1"
+                default_values="1">
+                <BooleanDomain name="bool"/>
+            </IntVectorProperty>
+
+            <IntVectorProperty
+                name="PLICCorrection"
+                label="PLIC Correction"
+                command="SetPLICCorrection"
+                number_of_elements="1"
+                default_values="1">
+                <BooleanDomain name="bool"/>
+            </IntVectorProperty>
+
+            <IntVectorProperty
+                name="IntegrationMethod"
+                label="Integration Method"
+                command="SetIntegrationMethod"
+                number_of_elements="1"
+                default_values="1"
+                panel_visibility="advanced">
+                <EnumerationDomain name="enum">
+                    <Entry value="1" text="RK4"/>
+                    <Entry value="2" text="Euler"/>
+                </EnumerationDomain>
+            </IntVectorProperty>
+
+            <IntVectorProperty
+                name="IntegrationSubSteps"
+                label="Integration Sub-Steps"
+                command="SetIntegrationSubSteps"
+                number_of_elements="1"
+                default_values="8"
+                panel_visibility="advanced">
+            </IntVectorProperty>
+
+            <DoubleVectorProperty
+                name="Epsilon"
+                label="Epsilon"
+                command="SetEpsilon"
+                number_of_elements="1"
+                default_values="0.00001"
+                panel_visibility="advanced">
+            </DoubleVectorProperty>
+
+            <IntVectorProperty
+                name="NumIterations"
+                label="Num Iterations"
+                command="SetNumIterations"
+                number_of_elements="1"
+                default_values="15"
+                panel_visibility="advanced">
+            </IntVectorProperty>
+
+            <IntVectorProperty
+                name="GhostCells"
+                label="Ghost Cells"
+                command="SetGhostCells"
+                number_of_elements="1"
+                default_values="4">
+            </IntVectorProperty>
+
+            <IntVectorProperty
+                name="CutLabels"
+                label="Cut Labels"
+                command="SetCutLabels"
+                number_of_elements="1"
+                default_values="0"
+                panel_visibility="advanced">
+                <BooleanDomain name="bool"/>
+            </IntVectorProperty>
+
+            <ProxyProperty name="CutFunction"
+                           label="Label Cut Type"
+                           command="SetCutFunction"
+                           panel_visibility="advanced">
+                <ProxyGroupDomain name="groups">
+                    <Group name="implicit_functions"/>
+                </ProxyGroupDomain>
+                <ProxyListDomain name="proxy_list">
+                    <Group name="slice_implicit_functions" default="Plane"/>
+                </ProxyListDomain>
+                <Hints>
+                    <PropertyWidgetDecorator type="ShowWidgetDecorator">
+                        <Property name="CutLabels" function="boolean"/>
+                    </PropertyWidgetDecorator>
+                </Hints>
+                <Documentation>
+                    This property specifies the parameters of the cut function
+                    (an implicit description) used to cut the labeled regions.
+                </Documentation>
+            </ProxyProperty>
+
+            <IntVectorProperty
+                name="BoundaryMethod"
+                label="Boundary Method"
+                command="SetBoundaryMethod"
+                number_of_elements="1"
+                default_values="2"
+                panel_visibility="advanced">
+                <EnumerationDomain name="enum">
+                    <Entry value="1" text="DiscreteMarchingCubes"/>
+                    <Entry value="2" text="DiscreteFlyingEdges3D"/>
+                </EnumerationDomain>
+            </IntVectorProperty>
+
+            <IntVectorProperty
+                name="OutputDataType"
+                label="Output Data Type"
+                command="SetOutputDataType"
+                number_of_elements="1"
+                default_values="2">
+                <EnumerationDomain name="enum">
+                    <Entry value="1" text="vtkRectilinearGrid"/>
+                    <Entry value="2" text="vtkImageData"/>
+                </EnumerationDomain>
+            </IntVectorProperty>
+
+            <IntVectorProperty
+                name="OutputState"
+                label="Output State"
+                command="SetOutputState"
+                number_of_elements="1"
+                default_values="1"
+                panel_visibility="advanced">
+                <BooleanDomain name="bool"/>
+            </IntVectorProperty>
+
+            <IntVectorProperty
+                name="OutputTimeMeasure"
+                label="Output Time Measure"
+                command="SetOutputTimeMeasure"
+                number_of_elements="1"
+                default_values="0"
+                panel_visibility="advanced">
+                <BooleanDomain name="bool"/>
+            </IntVectorProperty>
+
+            <IntVectorProperty
+                name="MirrorXMin"
+                label="Mirror X Min"
+                command="SetMirrorXMin"
+                number_of_elements="1"
+                default_values="0">
+                <BooleanDomain name="bool"/>
+            </IntVectorProperty>
+
+            <IntVectorProperty
+                name="MirrorXMax"
+                label="Mirror X Max"
+                command="SetMirrorXMax"
+                number_of_elements="1"
+                default_values="0">
+                <BooleanDomain name="bool"/>
+            </IntVectorProperty>
+
+            <IntVectorProperty
+                name="MirrorYMin"
+                label="Mirror Y Min"
+                command="SetMirrorYMin"
+                number_of_elements="1"
+                default_values="0">
+                <BooleanDomain name="bool"/>
+            </IntVectorProperty>
+
+            <IntVectorProperty
+                name="MirrorYMax"
+                label="Mirror Y Max"
+                command="SetMirrorYMax"
+                number_of_elements="1"
+                default_values="0">
+                <BooleanDomain name="bool"/>
+            </IntVectorProperty>
+
+            <IntVectorProperty
+                name="MirrorZMin"
+                label="Mirror Z Min"
+                command="SetMirrorZMin"
+                number_of_elements="1"
+                default_values="0">
+                <BooleanDomain name="bool"/>
+            </IntVectorProperty>
+
+            <IntVectorProperty
+                name="MirrorZMax"
+                label="Mirror Z Max"
+                command="SetMirrorZMax"
+                number_of_elements="1"
+                default_values="0">
+                <BooleanDomain name="bool"/>
+            </IntVectorProperty>
+
+            <OutputPort index="0" name="Grid"/>
+            <OutputPort index="1" name="Seeds"/>
+            <OutputPort index="2" name="Advected Particles"/>
+            <OutputPort index="3" name="Boundaries"/>
+
+            <Hints>
+                <ShowInMenu category="VofFlow" icon=":/icons/IconVofTracking.png"/>
+            </Hints>
+
+        </SourceProxy>
+
+        <SourceProxy name="Plic" class="vtkPlic" label="PLIC">
+            <Documentation
+                long_help="Calculate PLIC surface."
+                short_help="PLIC.">
+            </Documentation>
+
+            <InputProperty
+                name="Input"
+                port_index="0"
+                command="SetInputConnection"
+                label="Input Grid">
+                <ProxyGroupDomain name="groups">
+                    <Group name="sources"/>
+                    <Group name="filters"/>
+                </ProxyGroupDomain>
+                <DataTypeDomain name="input_type">
+                    <DataType value="vtkRectilinearGrid"/>
+                </DataTypeDomain>
+                <InputArrayDomain
+                    attribute_type="cell"
+                    name="input_array_vof"
+                    number_of_components="1"/>
+                <Documentation>
+                    Grid with VoF array.
+                </Documentation>
+            </InputProperty>
+
+            <StringVectorProperty
+                name="SelectInputScalarsVof"
+                label="VoF"
+                command="SetInputArrayToProcess"
+                number_of_elements="5"
+                element_types="0 0 0 0 2"
+                animateable="0"
+                default_values="0">
+                <ArrayListDomain
+                    name="array_list"
+                    attribute_type="Scalars"
+                    input_domain_name="input_array_vof">
+                    <RequiredProperties>
+                        <Property name="Input" function="Input"/>
+                    </RequiredProperties>
+                </ArrayListDomain>
+                <Documentation>
+                    Volume of fluid field.
+                </Documentation>
+            </StringVectorProperty>
+
+            <DoubleVectorProperty
+                name="Epsilon"
+                label="Epsilon"
+                command="SetEpsilon"
+                number_of_elements="1"
+                default_values="0.000001">
+            </DoubleVectorProperty>
+
+            <IntVectorProperty
+                name="NumIterations"
+                label="Num Iterations"
+                command="SetNumIterations"
+                number_of_elements="1"
+                default_values="20">
+            </IntVectorProperty>
+
+            <OutputPort index="0" name="Plic"/>
+
+            <Hints>
+                <ShowInMenu category="VofFlow" icon=":/icons/IconPlic.png"/>
+            </Hints>
+
+        </SourceProxy>
+
+        <SourceProxy name="Plic3" class="vtkPlic3" label="PLIC3">
+            <Documentation
+                long_help="Calculate PLIC3 surface."
+                short_help="PLIC3.">
+            </Documentation>
+
+            <InputProperty
+                name="Input"
+                port_index="0"
+                command="SetInputConnection"
+                label="Input Grid">
+                <ProxyGroupDomain name="groups">
+                    <Group name="sources"/>
+                    <Group name="filters"/>
+                </ProxyGroupDomain>
+                <DataTypeDomain name="input_type">
+                    <DataType value="vtkRectilinearGrid"/>
+                </DataTypeDomain>
+                <InputArrayDomain
+                    attribute_type="cell"
+                    name="input_array_vof3"
+                    number_of_components="1"/>
+                <InputArrayDomain
+                    attribute_type="cell"
+                    name="input_array_vof"
+                    number_of_components="1"/>
+                <InputArrayDomain
+                    attribute_type="cell"
+                    name="input_array_vof_norm"
+                    number_of_components="3"/>
+                <Documentation>
+                    Grid with VoF arrays.
+                </Documentation>
+            </InputProperty>
+
+            <StringVectorProperty
+                name="SelectInputScalarsVof3"
+                label="VoF3"
+                command="SetInputArrayToProcess"
+                number_of_elements="5"
+                element_types="0 0 0 0 2"
+                animateable="0"
+                default_values="0">
+                <ArrayListDomain
+                    name="array_list"
+                    attribute_type="Scalars"
+                    input_domain_name="input_array_vof3">
+                    <RequiredProperties>
+                        <Property name="Input" function="Input"/>
+                    </RequiredProperties>
+                </ArrayListDomain>
+                <Documentation>
+                    Volume of fluid field (three-phase).
+                </Documentation>
+            </StringVectorProperty>
+            <StringVectorProperty
+                name="SelectInputScalarsVof"
+                label="VoF"
+                command="SetInputArrayToProcess"
+                number_of_elements="5"
+                element_types="0 0 0 0 2"
+                animateable="0"
+                default_values="1">
+                <ArrayListDomain
+                    name="array_list"
+                    attribute_type="Scalars"
+                    input_domain_name="input_array_vof">
+                    <RequiredProperties>
+                        <Property name="Input" function="Input"/>
+                    </RequiredProperties>
+                </ArrayListDomain>
+                <Documentation>
+                    Volume of fluid field.
+                </Documentation>
+            </StringVectorProperty>
+            <StringVectorProperty
+                name="SelectInputVectorsVofNorm"
+                label="VoF Norm"
+                command="SetInputArrayToProcess"
+                number_of_elements="5"
+                element_types="0 0 0 0 2"
+                animateable="0"
+                default_values="2">
+                <ArrayListDomain
+                    name="array_list"
+                    attribute_type="Vectors"
+                    input_domain_name="input_array_vof_norm">
+                    <RequiredProperties>
+                        <Property name="Input" function="Input"/>
+                    </RequiredProperties>
+                </ArrayListDomain>
+                <Documentation>
+                    VoF normals field (three-phase).
+                </Documentation>
+            </StringVectorProperty>
+
+            <DoubleVectorProperty
+                name="Epsilon"
+                label="Epsilon"
+                command="SetEpsilon"
+                number_of_elements="1"
+                default_values="0.000001">
+            </DoubleVectorProperty>
+
+            <IntVectorProperty
+                name="NumIterations"
+                label="Num Iterations"
+                command="SetNumIterations"
+                number_of_elements="1"
+                default_values="20">
+            </IntVectorProperty>
+
+            <OutputPort index="0" name="Plic3"/>
+
+            <Hints>
+                <ShowInMenu category="VofFlow" icon=":/icons/IconPlic3.png"/>
+            </Hints>
+
+        </SourceProxy>
+    </ProxyGroup>
+    <ParaViewFilters>
+        <Category name="VofFlow" menu_label="&amp;VofFlow" show_in_toolbar="1">
+            <Proxy group="filters" name="VofTracking"/>
+            <Proxy group="filters" name="Plic"/>
+            <Proxy group="filters" name="Plic3"/>
+        </Category>
+    </ParaViewFilters>
+</ServerManagerConfiguration>

@@ -1,0 +1,8 @@
+{
+  "name": "vofflow",
+  "version": "1.0.0",
+  "dependencies": [
+    "cgal",
+    "nlohmann-json"
+  ]
+}

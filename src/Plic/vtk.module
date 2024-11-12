@@ -1,0 +1,6 @@
+NAME
+  VofFlow::Plic
+DEPENDS
+  VTK::CommonCore
+  VTK::FiltersCore
+  VofFlow::VofDataUtils

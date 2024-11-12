@@ -1,0 +1,6 @@
+NAME
+  VofFlow::VofDataUtils
+DEPENDS
+  VTK::CommonCore
+  VTK::FiltersCore
+  VTK::ParallelMPI
