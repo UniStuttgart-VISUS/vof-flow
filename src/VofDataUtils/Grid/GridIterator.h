@@ -58,11 +58,11 @@ namespace VofFlow {
                 return position_;
             }
 
-            inline bool operator==(const Iterator& other) {
+            inline bool operator==(const Iterator& other) const {
                 return position_ == other.position_;
             }
 
-            inline bool operator!=(const Iterator& other) {
+            inline bool operator!=(const Iterator& other) const {
                 return position_ != other.position_;
             }
 

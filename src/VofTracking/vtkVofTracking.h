@@ -132,7 +132,7 @@ public:
 
 protected:
     vtkVofTracking();
-    ~vtkVofTracking() override;
+    ~vtkVofTracking() override = default;
 
     int FillInputPortInformation(int port, vtkInformation* info) override;
     int FillOutputPortInformation(int port, vtkInformation* info) override;

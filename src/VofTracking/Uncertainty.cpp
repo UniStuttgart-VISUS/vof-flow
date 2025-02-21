@@ -1,10 +1,5 @@
 #include "Uncertainty.h"
 
-#include <cmath>
-#include <unordered_map>
-
-#include <vtkType.h>
-
 #include "Constants.h"
 #include "Grid/GridIterator.h"
 #include "Misc/Profiling.h"

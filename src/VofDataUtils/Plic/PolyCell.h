@@ -45,7 +45,7 @@ namespace VofFlow {
             std::vector<K::Point_3> intersections; // only the intersections with the cube
         };
 
-        Plane intersectPlane(const K::Plane_3& intersect_plane);
+        [[nodiscard]] Plane intersectPlane(const K::Plane_3& intersect_plane) const;
 
         void updatePolyhedronPoints();
 

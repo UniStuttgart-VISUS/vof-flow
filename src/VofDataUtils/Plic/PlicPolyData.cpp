@@ -4,7 +4,6 @@
 #include <vector>
 
 #include <CGAL/number_utils.h>
-
 #include <vtkCellData.h>
 #include <vtkType.h>
 
@@ -44,8 +43,8 @@ VofFlow::vtkPlic3PolyData::vtkPlic3PolyData() {
     phaseType_ = createVtkArray<vtkUnsignedCharArray>("PhaseType", 1);
 }
 
-void VofFlow::vtkPlic3PolyData::addPolygon(VofFlow::CellClass cellClass, unsigned char phaseType,
-    const VofFlow::PlicPolyResult& plicResult) {
+void VofFlow::vtkPlic3PolyData::addPolygon(CellClass cellClass, unsigned char phaseType,
+    const PlicPolyResult& plicResult) {
     vtkPlic_.addPolygon(plicResult);
     cellClass_->InsertNextValue(static_cast<unsigned char>(cellClass));
     phaseType_->InsertNextValue(static_cast<unsigned char>(phaseType));

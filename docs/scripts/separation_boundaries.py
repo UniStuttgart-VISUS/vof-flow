@@ -3,7 +3,10 @@ from paraview.simple import *
 
 # Config
 dataset = '~/vofflow/data/jet-collision-ds2/jet-collision-ds2.pvd'
-plugin_path = '~/vofflow/install/lib/paraview-5.12/plugins/VofFlow/VofFlow.so'
+if os.name == 'nt':
+    plugin_path = '~/vofflow/install/bin/paraview-5.13/plugins/VofFlow/VofFlow.dll'
+else:
+    plugin_path = '~/vofflow/install/lib/paraview-5.13/plugins/VofFlow/VofFlow.so'
 output_path = '~/vofflow/output/result'
 
 init_timestep = 68  # The time steps used in the paper (fig. 14) are: 68, 82, 96, 110, 124, 138, 152.

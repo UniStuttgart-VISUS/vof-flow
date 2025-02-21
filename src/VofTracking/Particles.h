@@ -33,7 +33,7 @@ namespace VofFlow {
 
         [[nodiscard]] vtkSmartPointer<vtkPolyData> toPolyData() const;
 
-        bool hasValidSize() const {
+        [[nodiscard]] bool hasValidSize() const {
             const auto s = position.size();
             return s == phaseIdx.size() && s == id.size() && s == processId.size() && s == changedPhaseStep.size() &&
                    s == uncertainty.size();

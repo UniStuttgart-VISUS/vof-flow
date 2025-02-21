@@ -8,12 +8,15 @@
 #include <CGAL/intersections.h>
 #include <CGAL/number_utils.h>
 
+#include "../Misc/CgalVariant.h"
 #include "../Misc/Profiling.h"
 
 namespace {
     using VofFlow::K;
 
-    struct Intersection_visitor : public boost::static_visitor<std::vector<K::Point_3>> {
+    struct Intersection_visitor {
+        typedef std::vector<K::Point_3> result_type;
+
         std::vector<K::Point_3> operator()(const K::Point_3& p) const {
             return {p};
         }
@@ -88,14 +91,14 @@ void VofFlow::PolyCell::invertPlanes() {
     updatePolyhedronPoints();
 }
 
-VofFlow::PolyCell::Plane VofFlow::PolyCell::intersectPlane(const K::Plane_3& intersect_plane) {
+VofFlow::PolyCell::Plane VofFlow::PolyCell::intersectPlane(const K::Plane_3& intersect_plane) const {
     ZoneScoped;
 
     Plane p{intersect_plane, {}};
 
     const auto result = intersection(cell_, p.plane);
     if (result) {
-        p.intersections = boost::apply_visitor(Intersection_visitor(), *result);
+        p.intersections = do_visit(Intersection_visitor(), *result);
     }
     return p;
 }
@@ -145,14 +148,14 @@ void VofFlow::PolyCell::updatePolyhedronPoints() {
 
         const auto result = CGAL::intersection(planes_[0].plane, planes_[1].plane);
         if (result) {
-            if (const K::Line_3* l = boost::get<K::Line_3>(&*result)) {
+            if (const K::Line_3* l = variant_get<K::Line_3>(&*result)) {
                 const auto result2 = CGAL::intersection(cell_, *l);
                 if (result2) {
-                    if (const K::Segment_3* s = boost::get<K::Segment_3>(&*result2)) {
+                    if (const K::Segment_3* s = variant_get<K::Segment_3>(&*result2)) {
                         polyhedron_points_.push_back(s->source());
                         polyhedron_points_.push_back(s->target());
                     } else {
-                        const K::Point_3* p = boost::get<K::Point_3>(&*result2);
+                        const K::Point_3* p = variant_get<K::Point_3>(&*result2);
                         polyhedron_points_.push_back(*p);
                     }
                 }

@@ -25,9 +25,9 @@ namespace VofFlow {
             : domainInfo_(domainInfo),
               mpiController_(mpiController) {}
 
-        ComponentResult extractComponents(const vtkSmartPointer<vtkDataArray>& vof);
+        [[nodiscard]] ComponentResult extractComponents(const vtkSmartPointer<vtkDataArray>& vof) const;
 
-        ComponentResult checkComponents(const vtkSmartPointer<vtkDataArray>& inComponents);
+        [[nodiscard]] ComponentResult checkComponents(const vtkSmartPointer<vtkDataArray>& inComponents) const;
 
     private:
         static inline uint64_t makeCombinedLabel(int processId, int label) {
@@ -80,9 +80,7 @@ namespace VofFlow {
             int to;
         };
 
-        ComponentResult extractComponentsLocal(const vtkSmartPointer<vtkDataArray>& vof);
-
-        std::tuple<std::vector<BorderExtent>, std::vector<BorderExtent>> calcBorderExtents();
+        [[nodiscard]] std::tuple<std::vector<BorderExtent>, std::vector<BorderExtent>> calcBorderExtents() const;
 
         const DomainInfo& domainInfo_;
         vtkMPIController* mpiController_;

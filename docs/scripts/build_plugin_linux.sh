@@ -47,7 +47,7 @@ EOF
 chmod +x "plugin_build/run.sh"
 
 # Execute build in docker
-docker run --rm -v "$(pwd)/plugin_build:/plugin_build" kitware/paraview_org-plugin-devel:5.12.0 /bin/bash -c "/plugin_build/run.sh"
+docker run --rm -v "$(pwd)/plugin_build:/plugin_build" kitware/paraview_org-plugin-devel:5.13.2 /bin/bash -c "/plugin_build/run.sh"
 
 # Cleanup
 rm "plugin_build/run.sh"

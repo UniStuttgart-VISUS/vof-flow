@@ -9,15 +9,16 @@ We provide [details on the reproducibility](docs/REPRODUCIBILITY.md) and usage e
 
 ## Download
 
-Plugin binaries for ParaView 5.12.0 are provided on the [Release Page](https://github.com/UniStuttgart-VISUS/vof-flow/releases).
-They are compatible with the official ParaView 5.12.0 MPI release for Linux or Windows, available from the [ParaView website](https://www.paraview.org/download/):
-- [Download ParaView 5.12.0 MPI Linux](https://www.paraview.org/paraview-downloads/download.php?submit=Download&version=v5.12&type=binary&os=Linux&downloadFile=ParaView-5.12.0-MPI-Linux-Python3.10-x86_64.tar.gz)
-- [Download ParaView 5.12.0 MPI Windows](https://www.paraview.org/paraview-downloads/download.php?submit=Download&version=v5.12&type=binary&os=Windows&downloadFile=ParaView-5.12.0-MPI-Windows-Python3.10-msvc2017-AMD64.zip)
+Plugin binaries for ParaView 5.13.2 are provided on the [Release Page](https://github.com/UniStuttgart-VISUS/vof-flow/releases).
+They are compatible with the official ParaView 5.13.2 MPI release for Linux or Windows, available from the [ParaView website](https://www.paraview.org/download/):
+
+- [Download ParaView 5.13.2 MPI Linux](https://www.paraview.org/paraview-downloads/download.php?submit=Download&version=v5.13&type=binary&os=Linux&downloadFile=ParaView-5.13.2-MPI-Linux-Python3.10-x86_64.tar.gz)
+- [Download ParaView 5.13.2 MPI Windows](https://www.paraview.org/paraview-downloads/download.php?submit=Download&version=v5.13&type=binary&os=Windows&downloadFile=ParaView-5.13.2-MPI-Windows-Python3.10-msvc2017-AMD64.zip)
 
 ## Build from source
 
 The plugin can be built from source using the common ParaView plugin interface.
-For details, we refer to the [ParaView Plugin Howto](https://www.paraview.org/paraview-docs/v5.12.0/cxx/PluginHowto.html).
+For details, we refer to the [ParaView Plugin Howto](https://www.paraview.org/paraview-docs/v5.13.2/cxx/PluginHowto.html).
 A more detailed example of the build steps can be found in our [reproducibility documentation](docs/REPRODUCIBILITY.md).
 
 ## Example Data
@@ -107,7 +108,7 @@ M. Heinemann, J. Potyka, K. Schulte, F. Sadlo, T. Ertl: "**Visualization of Fini
 
 ## License
 
-> Copyright (c) 2024, Visualization Research Center (VISUS), University of Stuttgart
+> Copyright (c) 2024 - 2025, Visualization Research Center (VISUS), University of Stuttgart
 
 Our code in this repository is licensed under the [BSD 3-Clause License](LICENSE).
 
@@ -115,6 +116,5 @@ Additionally, the following dependencies with their corresponding licenses are u
 
 - [ParaView](https://gitlab.kitware.com/paraview/paraview)
 - [CGAL](https://github.com/cgal/cgal)
-- [JSON for Modern C++](https://github.com/nlohmann/json)
 - [vcpkg](https://github.com/microsoft/vcpkg)
 - [ParaViewEasyPluginBuilder](https://gitlab.kitware.com/paraview/paraview-easy-plugin-builder)

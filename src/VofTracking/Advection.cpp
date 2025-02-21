@@ -1,7 +1,7 @@
 #include "Advection.h"
 
 #include <algorithm>
-#include <iostream>
+#include <cstdint>
 #include <limits>
 #include <stdexcept>
 #include <unordered_map>
@@ -12,9 +12,10 @@
 #include "Grid/DataInterpolation.h"
 #include "Grid/DomainInfo.h"
 #include "Grid/GridIterator.h"
+#include "Grid/GridTypes.h"
 #include "Misc/CgalUtil.h"
+#include "Misc/CgalVariant.h"
 #include "Misc/Profiling.h"
-#include "Plic/CachedPlic.h"
 #include "Plic/PlicUtil.h"
 
 namespace {
@@ -188,7 +189,7 @@ namespace {
                 // bounds. Current logic is, do nothing here. This means, if the closest neighbor displacement goes out
                 // of bounds we do not apply neighbor correction. TODO: Should we move this check to the neighbor search
                 // above, to find closest neighbor which displacement stays in bounds instead?
-                // std::cout << "Smart corrector displacement out of bounds!" << std::endl;
+                // vtkGenericWarningMacro("Neighbor corrector displacement out of bounds!");
             }
         }
     }
@@ -255,10 +256,10 @@ namespace {
             const auto result = CGAL::intersection(plane, line);
             if (result) {
                 VofFlow::K::Point_3 newPos;
-                if (const VofFlow::K::Point_3* p = boost::get<VofFlow::K::Point_3>(&*result)) {
+                if (const VofFlow::K::Point_3* p = variant_get<VofFlow::K::Point_3>(&*result)) {
                     newPos = *p;
                 } else {
-                    const VofFlow::K::Segment_3* s = boost::get<VofFlow::K::Segment_3>(&*result);
+                    const VofFlow::K::Segment_3* s = variant_get<VofFlow::K::Segment_3>(&*result);
                     // This case should not be possible. Base point is always outside the plain.
                     // Only exception should be f = 0 cells. So just use source point of segment.
                     newPos = s->source();
@@ -383,12 +384,12 @@ void VofFlow::correctParticles(const DomainInfo& domainInfo, Particles& particle
         auto gridCoord = domainInfo.posToGridCoord(pos);
         if (!gridCoord.has_value()) {
             outOfBounds = true;
-            // This case should be avoided, i.e. by increasing number of ghost cells.
-            std::cout << "Found particle out of domain!" << std::endl; // TODO
+            // This case should be avoided, i.e., by increasing number of ghost cells.
+            vtkGenericWarningMacro("Found particle out of domain! Increase number of ghost cells!"); // TODO
             // Hotfix: pull particle back into domain.
             const auto& b = domainInfo.localBounds();
-            const VofFlow::vec3 cellMin{static_cast<float>(b[0]), static_cast<float>(b[2]), static_cast<float>(b[4])};
-            const VofFlow::vec3 cellMax{static_cast<float>(b[1]), static_cast<float>(b[3]), static_cast<float>(b[5])};
+            const vec3 cellMin{static_cast<float>(b[0]), static_cast<float>(b[2]), static_cast<float>(b[4])};
+            const vec3 cellMax{static_cast<float>(b[1]), static_cast<float>(b[3]), static_cast<float>(b[5])};
             pos = clampCell(pos, cellMin, cellMax);
             gridCoord = domainInfo.posToGridCoord(pos);
         }

@@ -16,5 +16,5 @@ protected:
     vtkPlic3() = default;
     ~vtkPlic3() override = default;
 
-    int calcPlic(vtkRectilinearGrid* input, vtkPolyData* output) override;
+    int calcPlic(vtkDataSet* input, vtkPolyData* output) override;
 };

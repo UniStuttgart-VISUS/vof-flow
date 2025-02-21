@@ -10,10 +10,10 @@ namespace VofFlow {
         float y;
         float z;
 
-        vec3() : x(0.0f), y(0.0f), z(0.0f){};
-        explicit vec3(float v) : x(v), y(v), z(v){};
-        explicit vec3(float v[3]) : x(v[0]), y(v[1]), z(v[2]){};
-        vec3(float x, float y, float z) : x(x), y(y), z(z){};
+        vec3() : x(0.0f), y(0.0f), z(0.0f) {}
+        explicit vec3(float v) : x(v), y(v), z(v) {}
+        explicit vec3(float v[3]) : x(v[0]), y(v[1]), z(v[2]) {}
+        vec3(float x, float y, float z) : x(x), y(y), z(z) {}
 
         // Allow float[3] style pointer access.
         [[nodiscard]] inline const float* data() const {
@@ -172,6 +172,14 @@ namespace VofFlow {
             std::max(a.y, b.y),
             std::max(a.z, b.z),
         };
+    }
+
+    inline float minComp(const vec3& v) {
+        return std::min(v.x, std::min(v.y, v.z));
+    }
+
+    inline float maxComp(const vec3& v) {
+        return std::max(v.x, std::max(v.y, v.z));
     }
 
     inline vec3 nextafter(const vec3& from, const vec3& to) {

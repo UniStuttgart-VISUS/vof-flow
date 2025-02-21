@@ -2,23 +2,18 @@ import os
 from paraview.simple import *
 
 # Config
-dataset = '~/vofflow/output/result/bound_gap_smoothed.vtp'
-plugin_path = '~/vofflow/install/lib/paraview-5.12/plugins/VofFlow/VofFlow.so'
+dataset = '~/vofflow/output/result/bound_smooth.pvd'
 output_path = '~/vofflow/output/fig_jet_bound.png'
 
-label_jet = 15  # Use 20 for full dataset, 20 for "ds1", and 15 for "ds2"
-label_drop = 8  # Use 12 for full dataset, 12 for "ds1", and 8 for "ds2"
-
-# Load plugin
-LoadPlugin(os.path.expanduser(plugin_path), ns=globals())
+label_jet = 16  # Use 21 for full dataset, 21 for "ds1", and 16 for "ds2"
+label_drop = 2  # Use 2 for full dataset, 2 for "ds1", and 2 for "ds2"
 
 LoadPalette(paletteName='WhiteBackground')
 
 renderView1 = GetActiveViewOrCreate('RenderView')
 
 # Read smoothed bound data
-reader = XMLPolyDataReader(registrationName='bounds', FileName=[os.path.expanduser(dataset)])
-reader.PointArrayStatus = ['Labels', 'Normals']
+reader = PVDReader(registrationName='bounds', FileName=os.path.expanduser(dataset))
 
 # Cutout jet label
 threshold1 = Threshold(registrationName='Threshold1', Input=reader)

@@ -7,6 +7,7 @@
 #include <vtkType.h>
 
 #include "../Grid/DomainInfo.h"
+#include "../Math/Vector.h"
 #include "../Misc/Profiling.h"
 #include "../Misc/VofData.h"
 #include "PlicUtil.h"
@@ -19,7 +20,7 @@ namespace VofFlow {
             : domainInfo_(domainInfo),
               vofData_(vofData),
               eps_(eps),
-              numIterations_(numIterations){};
+              numIterations_(numIterations) {}
 
         inline const PlicCellClassResult& get(vtkIdType gridIdx) {
             ZoneScoped;

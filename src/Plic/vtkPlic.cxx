@@ -1,8 +1,8 @@
 #include "vtkPlic.h"
 
 #include <vtkDataArray.h>
+#include <vtkDataSet.h>
 #include <vtkPolyData.h>
-#include <vtkRectilinearGrid.h>
 
 #include "Grid/DomainInfo.h"
 #include "Grid/GridIterator.h"
@@ -13,7 +13,7 @@
 
 vtkStandardNewMacro(vtkPlic);
 
-int vtkPlic::calcPlic(vtkRectilinearGrid* input, vtkPolyData* output) {
+int vtkPlic::calcPlic(vtkDataSet* input, vtkPolyData* output) {
     ZoneScoped;
 
     VofFlow::DomainInfo domainInfo(input, mpiController_);

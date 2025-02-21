@@ -7,39 +7,58 @@ on:
 jobs:
   linux:
     name: Linux-Build
-    runs-on: ubuntu-22.04
-    container:
-      image: kitware/paraview_org-plugin-devel:5.12.0
-    env:
-      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true # nodejs 16 is required for CentOS 7
+    runs-on: ubuntu-24.04
+    # ParaView plugin builder Docker image is based on CentOS 7 which is too old for GitHub Actions.
+    # Therefore, we need to run checkout and upload-artifact outside Docker and cannot use a container action.
     steps:
-      - name: Install dependencies
+      - uses: actions/checkout@v4
+        with:
+          path: 'src'
+      - name: Build Plugin
         run: |
+          # This script is based on the ParaViewEasyPluginBuilder
+          # https://gitlab.kitware.com/paraview/paraview-easy-plugin-builder
+
+          # Create dirs
+          mkdir run
+          mkdir install
+
+          # Create build script running in the docker container
+          cat > "run/run.sh" <<EOF
+          #!/bin/bash
+
+          # Create dirs
+          mkdir -p /vofflow/build
+
           # Fix CentOS 7 EOL (https://serverfault.com/a/1161847)
           sed -i s/mirror.centos.org/vault.centos.org/g /etc/yum.repos.d/CentOS-*.repo
           sed -i s/^#.*baseurl=http/baseurl=http/g /etc/yum.repos.d/CentOS-*.repo
           sed -i s/^mirrorlist=http/#mirrorlist=http/g /etc/yum.repos.d/CentOS-*.repo
+
+          # Install C++17 Compiler
           yum -y install devtoolset-9
-      - uses: actions/checkout@v3 # glibc in container is too old for v4
-      - name: Configure
-        run: |
-          PARAVIEW_DIR=`find /builds/gitlab-kitware-sciviz-ci/build/install/lib/cmake -type d -regex "/builds/gitlab-kitware-sciviz-ci/build/install/lib/cmake/paraview-[0-9,.]*"`
-          scl enable devtoolset-9 -- cmake -S . -B ${{github.workspace}}/build -DParaView_DIR=$PARAVIEW_DIR -DCMAKE_BUILD_TYPE=Release
-      - name: Build
-        run: |
-          scl enable devtoolset-9 -- cmake --build ${{github.workspace}}/build --parallel 4
-      - name: Install
-        run: |
-          scl enable devtoolset-9 -- cmake --install ${{github.workspace}}/build --prefix ./install
-      - name: Cleanup
-        run: |
-          mv ./install/lib64 ./install/lib
-      - uses: actions/upload-artifact@v3 # glibc in container is too old for v4
+
+          # Build
+          PARAVIEW_DIR=\`find /builds/gitlab-kitware-sciviz-ci/build/install/lib/cmake -type d -regex "/builds/gitlab-kitware-sciviz-ci/build/install/lib/cmake/paraview-[0-9,.]*"\`
+          scl enable devtoolset-9 -- cmake -S /vofflow/src -B /vofflow/build -DParaView_DIR=\$PARAVIEW_DIR -DCMAKE_BUILD_TYPE=Release
+          scl enable devtoolset-9 -- cmake --build /vofflow/build --parallel 4
+          scl enable devtoolset-9 -- cmake --install /vofflow/build --prefix /vofflow/install
+
+          # Cleanup static libs
+          find /vofflow/install -name "*.a" -type f -delete
+
+          # Cleanup lib64 > lib
+          mv /vofflow/install/lib64 /vofflow/install/lib
+
+          # Cleanup file owners
+          chown -R $(id -u):$(id -g) /vofflow/install
+          EOF
+          chmod +x "run/run.sh"
+
+          # Execute build in docker
+          docker run --rm -v "$(pwd)/src:/vofflow/src" -v "$(pwd)/install:/vofflow/install" -v "$(pwd)/run:/vofflow/run" kitware/paraview_org-plugin-devel:5.13.2 /bin/bash -c "/vofflow/run/run.sh"
+      - uses: actions/upload-artifact@v4
         with:
           name: VofFlow
           path: |
-            ./install/lib/paraview-5.12/plugins/VofFlow/VofFlow.so
-            ./install/bin/MaxVelocity
-            ./install/bin/PolyGap
-            ./install/bin/SeedGrid
-            ./install/bin/SmoothNormals
+            ./install/

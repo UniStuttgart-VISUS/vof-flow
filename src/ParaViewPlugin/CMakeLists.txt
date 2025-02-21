@@ -1,9 +1,9 @@
 # Overwrite policy version inherited vom ParaView CMake.
 cmake_policy(PUSH)
-cmake_policy(VERSION 3.12...3.29)
+cmake_policy(VERSION 3.12...3.31)
 
 paraview_add_plugin(VofFlow
-  VERSION "1.0"
+  VERSION "1.1"
   SERVER_MANAGER_XML VofFlow.xml
   MODULES
     VofFlow::VofDataUtils

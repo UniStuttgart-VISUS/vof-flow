@@ -5,10 +5,12 @@
 #include <vtkCommunicator.h>
 #include <vtkDataArray.h>
 #include <vtkDataObject.h>
+#include <vtkDoubleArray.h>
 #include <vtkExtentTranslator.h>
 #include <vtkInformation.h>
 #include <vtkMPIController.h>
 
+#include "GridDataSet.h"
 #include "VtkUtil/VtkUtilArray.h"
 #include "VtkUtil/VtkUtilMPI.h"
 
@@ -38,7 +40,7 @@ namespace {
     }
 
     template<typename T>
-    bool isUniformCoords(const std::vector<T>& data, T eps = std::numeric_limits<T>::epsilon()) {
+    bool isUniformCoords(const std::vector<T>& data, T eps = 2.0 * std::numeric_limits<T>::epsilon()) {
         if (data.size() < 2) {
             return true;
         }
@@ -49,43 +51,71 @@ namespace {
             min_dist = std::min(min_dist, dist);
             max_dist = std::max(max_dist, dist);
         }
-        return (max_dist - min_dist) < eps;
+        return (max_dist - min_dist) <= eps;
+    }
+
+    std::vector<double> coordsFromImage(double origin, double spacing, int extMin, int extMax) {
+        std::vector<double> result(extMax - extMin + 1);
+        for (std::size_t i = 0; i < result.size(); i++) {
+            result[i] = origin + (extMin + static_cast<int>(i)) * spacing;
+        }
+        return result;
     }
 } // namespace
 
-VofFlow::DomainInfo::DomainInfo(vtkRectilinearGrid* grid, vtkMPIController* mpiController)
-    : localExtent_{},
+VofFlow::DomainInfo::DomainInfo(vtkDataSet* dataset, vtkMPIController* mpiController)
+    : imageDataStructure_(nullptr),
+      rectilinearGridStructure_(nullptr),
+      localExtent_{},
       localZeroExtent_{},
       globalExtent_{},
       localBounds_{},
       localZeroBounds_{},
       globalBounds_{},
-      dims_{},
+      localDims_{},
+      globalDims_{},
+      localDimsOffset_{},
       isUniform_(false),
       isParallel_(false),
       ghostArray_(nullptr) {
-    if (grid == nullptr) {
+    GridDataSet gridDataset(dataset);
+    if (!gridDataset.isValid()) {
         return;
     }
 
-    // Save a permanent copy of the grid structure without any data to have access to coords.
-    grid_ = vtkSmartPointer<vtkRectilinearGrid>::New();
-    grid_->CopyStructure(grid);
+    // Save a permanent copy of the grid structure without any data.
+    if (gridDataset.isImageData()) {
+        imageDataStructure_ = vtkSmartPointer<vtkImageData>::New();
+        imageDataStructure_->CopyStructure(gridDataset.getImageData());
+    } else {
+        rectilinearGridStructure_ = vtkSmartPointer<vtkRectilinearGrid>::New();
+        rectilinearGridStructure_->CopyStructure(gridDataset.getRectilinearGrid());
+    }
 
-    auto numberOfPieces = grid->GetInformation()->Get(vtkDataObject::DATA_NUMBER_OF_PIECES());
+    auto numberOfPieces = dataset->GetInformation()->Get(vtkDataObject::DATA_NUMBER_OF_PIECES());
     isParallel_ = mpiController != nullptr && mpiController->GetCommunicator() != nullptr && numberOfPieces > 1;
 
     // Basic input domain ranges
-    grid->GetExtent(localExtent_.data());
-    grid->GetBounds(localBounds_.data());
+    gridDataset.GetExtent(localExtent_);
+    dataset->GetBounds(localBounds_.data());
 
-    // cell dimensions (grid->GetDimensions() will return node dimensions)
-    dims_ = Grid::extentDimensions(localExtent_);
+    // Cell dimensions (grid->GetDimensions() returns node dimensions)
+    localDims_ = Grid::extentDimensions(localExtent_);
 
     // cell dimensions
-    coordsX_ = getArrayValues<double>(grid_->GetXCoordinates());
-    coordsY_ = getArrayValues<double>(grid_->GetYCoordinates());
-    coordsZ_ = getArrayValues<double>(grid_->GetZCoordinates());
+    if (gridDataset.isImageData()) {
+        posCoords_t origin{};
+        posCoords_t spacing{};
+        gridDataset.getImageData()->GetOrigin(origin.data());
+        gridDataset.getImageData()->GetSpacing(spacing.data());
+        coordsX_ = coordsFromImage(origin[0], spacing[0], localExtent_[0], localExtent_[1]);
+        coordsY_ = coordsFromImage(origin[1], spacing[1], localExtent_[2], localExtent_[3]);
+        coordsZ_ = coordsFromImage(origin[2], spacing[2], localExtent_[4], localExtent_[5]);
+    } else {
+        coordsX_ = getArrayValues<double>(gridDataset.getRectilinearGrid()->GetXCoordinates());
+        coordsY_ = getArrayValues<double>(gridDataset.getRectilinearGrid()->GetYCoordinates());
+        coordsZ_ = getArrayValues<double>(gridDataset.getRectilinearGrid()->GetZCoordinates());
+    }
     cellSizesX_ = calcCellSizes(coordsX_);
     cellSizesY_ = calcCellSizes(coordsY_);
     cellSizesZ_ = calcCellSizes(coordsZ_);
@@ -103,7 +133,11 @@ VofFlow::DomainInfo::DomainInfo(vtkRectilinearGrid* grid, vtkMPIController* mpiC
     }
 
     // Uniform Grid
-    isUniform_ = isUniformCoords(coordsX_) && isUniformCoords(coordsY_) && isUniformCoords(coordsZ_);
+    if (gridDataset.isImageData()) {
+        isUniform_ = true;
+    } else {
+        isUniform_ = isUniformCoords(coordsX_) && isUniformCoords(coordsY_) && isUniformCoords(coordsZ_);
+    }
 
     // No MPI / Single process case
     //
@@ -113,6 +147,8 @@ VofFlow::DomainInfo::DomainInfo(vtkRectilinearGrid* grid, vtkMPIController* mpiC
         localZeroExtent_ = localExtent_;
         globalBounds_ = localBounds_;
         localZeroBounds_ = localBounds_;
+        globalDims_ = localDims_;
+        localDimsOffset_ = {0, 0, 0};
         return;
     }
 
@@ -129,25 +165,26 @@ VofFlow::DomainInfo::DomainInfo(vtkRectilinearGrid* grid, vtkMPIController* mpiC
     // https://gitlab.kitware.com/vtk/vtk/-/blob/fc5d7cb1748b7b123c7d97bce88cf9385b39eeb6/Common/ExecutionModel/vtkStreamingDemandDrivenPipeline.cxx#L976-986
     // (VTK commit hash referenced by ParaView v5.9.0 tag)
 
-    grid->GetInformation()->Get(vtkDataObject::ALL_PIECES_EXTENT(), globalExtent_.data());
-    auto pieceNumber = grid->GetInformation()->Get(vtkDataObject::DATA_PIECE_NUMBER());
+    dataset->GetInformation()->Get(vtkDataObject::ALL_PIECES_EXTENT(), globalExtent_.data());
+    auto pieceNumber = dataset->GetInformation()->Get(vtkDataObject::DATA_PIECE_NUMBER());
 
     vtkExtentTranslator* et = vtkExtentTranslator::New();
     et->PieceToExtentThreadSafe(pieceNumber, numberOfPieces, 0, globalExtent_.data(), localZeroExtent_.data(),
         vtkExtentTranslator::BLOCK_MODE, 0);
     et->Delete();
 
+    globalDims_ = Grid::extentDimensions(globalExtent_);
+    localDimsOffset_ = {localExtent_[0] - globalExtent_[0], localExtent_[2] - globalExtent_[2],
+        localExtent_[4] - globalExtent_[4]};
+
     // MPI case bounds
 
-    vtkDataArray* coordsX = grid->GetXCoordinates();
-    vtkDataArray* coordsY = grid->GetYCoordinates();
-    vtkDataArray* coordsZ = grid->GetZCoordinates();
-    localZeroBounds_[0] = coordsX->GetComponent(localZeroExtent_[0] - localExtent_[0], 0);
-    localZeroBounds_[1] = coordsX->GetComponent(localZeroExtent_[1] - localExtent_[0], 0);
-    localZeroBounds_[2] = coordsY->GetComponent(localZeroExtent_[2] - localExtent_[2], 0);
-    localZeroBounds_[3] = coordsY->GetComponent(localZeroExtent_[3] - localExtent_[2], 0);
-    localZeroBounds_[4] = coordsZ->GetComponent(localZeroExtent_[4] - localExtent_[4], 0);
-    localZeroBounds_[5] = coordsZ->GetComponent(localZeroExtent_[5] - localExtent_[4], 0);
+    localZeroBounds_[0] = coordsX_[localZeroExtent_[0] - localExtent_[0]];
+    localZeroBounds_[1] = coordsX_[localZeroExtent_[1] - localExtent_[0]];
+    localZeroBounds_[2] = coordsY_[localZeroExtent_[2] - localExtent_[2]];
+    localZeroBounds_[3] = coordsY_[localZeroExtent_[3] - localExtent_[2]];
+    localZeroBounds_[4] = coordsZ_[localZeroExtent_[4] - localExtent_[4]];
+    localZeroBounds_[5] = coordsZ_[localZeroExtent_[5] - localExtent_[4]];
 
     // Save inverse of upper bounds to use combined minimum operation
     std::array<double, 6> sendBounds{
@@ -179,7 +216,7 @@ VofFlow::DomainInfo::DomainInfo(vtkRectilinearGrid* grid, vtkMPIController* mpiC
     // While we above avoided the array traversal, the ghost array is still useful to check individual cells without
     // calculating if they are within the zero extent.
     ghostArray_ = vtkSmartPointer<vtkUnsignedCharArray>::New();
-    ghostArray_->DeepCopy(grid->GetCellGhostArray());
+    ghostArray_->DeepCopy(dataset->GetCellGhostArray());
 
     // Find neighbors
     const int processId = mpiController->GetLocalProcessId();
@@ -188,8 +225,8 @@ VofFlow::DomainInfo::DomainInfo(vtkRectilinearGrid* grid, vtkMPIController* mpiC
     // Send zero extents
     std::vector<int> allZeroExtents(6 * numProcesses);
     std::vector<double> allZeroBounds(6 * numProcesses);
-    VofFlow::AllGatherVSameLength(mpiController, localZeroExtent_.data(), allZeroExtents.data(), 6);
-    VofFlow::AllGatherVSameLength(mpiController, localZeroBounds_.data(), allZeroBounds.data(), 6);
+    AllGatherVSameLength(mpiController, localZeroExtent_.data(), allZeroExtents.data(), 6);
+    AllGatherVSameLength(mpiController, localZeroBounds_.data(), allZeroBounds.data(), 6);
 
     // Find neighbours
     neighborsByDirection_ = std::array<std::vector<int>, 6>();
@@ -234,7 +271,7 @@ VofFlow::DomainInfo::DomainInfo(vtkRectilinearGrid* grid, vtkMPIController* mpiC
         row[n.processId] = 1;
     }
     std::vector<char> neighborMatrix(numProcesses * numProcesses, 0);
-    VofFlow::AllGatherVSameLength(mpiController, row, neighborMatrix);
+    AllGatherVSameLength(mpiController, row, neighborMatrix);
     for (int i = 0; i < numProcesses; i++) {
         if (neighborMatrix[i * numProcesses + i] != 0) {
             throw std::runtime_error("Bad neighbor finding!");
@@ -245,4 +282,30 @@ VofFlow::DomainInfo::DomainInfo(vtkRectilinearGrid* grid, vtkMPIController* mpiC
             }
         }
     }
+}
+
+void VofFlow::DomainInfo::createImageData() {
+    imageDataStructure_ = vtkSmartPointer<vtkImageData>::New();
+    imageDataStructure_->SetExtent(localExtent_.data());
+    // Set origin and spacing globally
+    const posCoords_t spacing{
+        (globalBounds_[1] - globalBounds_[0]) / globalDims_[0],
+        (globalBounds_[3] - globalBounds_[2]) / globalDims_[1],
+        (globalBounds_[5] - globalBounds_[4]) / globalDims_[2],
+    };
+    const posCoords_t origin{
+        globalBounds_[0] - (globalExtent_[0] * spacing[0]),
+        globalBounds_[2] - (globalExtent_[2] * spacing[1]),
+        globalBounds_[4] - (globalExtent_[4] * spacing[2]),
+    };
+    imageDataStructure_->SetOrigin(origin.data());
+    imageDataStructure_->SetSpacing(spacing.data());
+}
+
+void VofFlow::DomainInfo::createRectilinearGrid() {
+    rectilinearGridStructure_ = vtkSmartPointer<vtkRectilinearGrid>::New();
+    rectilinearGridStructure_->SetExtent(localExtent_.data());
+    rectilinearGridStructure_->SetXCoordinates(createVtkArray<vtkDoubleArray>("XCoordinates", coordsX_));
+    rectilinearGridStructure_->SetYCoordinates(createVtkArray<vtkDoubleArray>("YCoordinates", coordsY_));
+    rectilinearGridStructure_->SetZCoordinates(createVtkArray<vtkDoubleArray>("ZCoordinates", coordsZ_));
 }

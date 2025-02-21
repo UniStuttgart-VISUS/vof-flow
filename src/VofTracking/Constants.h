@@ -21,7 +21,7 @@ namespace VofFlow {
         static constexpr int NEIGHBOR_SEEDS = 101;
         static constexpr int COMPONENT_EXCHANGE_SIZE = 110;
         static constexpr int COMPONENT_EXCHANGE_DATA = 111;
-        static constexpr int COMPONENT_EXCHANGE_NUM_LABELS = 112;
+        static constexpr int COMPONENT_EXCHANGE_NUM_LABELS_CELL_IDX = 112;
         static constexpr int COMPONENT_EXCHANGE_PAIR_LIST = 113;
         static constexpr int COMPONENT_EXCHANGE_MAPPING = 114;
         static constexpr int PARTICLE_EXCHANGE = 120;

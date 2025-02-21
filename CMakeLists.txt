@@ -1,4 +1,17 @@
-cmake_minimum_required(VERSION 3.12...3.29 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.12...3.31 FATAL_ERROR)
+
+if (POLICY CMP0167)
+  # FindBoost module required for CGAL 5.x
+  cmake_policy(SET CMP0167 OLD)
+endif ()
+if (POLICY CMP0169)
+  # FetchContent_Populate deprecation is used for vcpkg download
+  cmake_policy(SET CMP0169 OLD)
+endif ()
+
+# Disable in source build
+set(CMAKE_DISABLE_SOURCE_CHANGES ON)
+set(CMAKE_DISABLE_IN_SOURCE_BUILD ON)
 
 include(CMakeDependentOption)
 
@@ -19,7 +32,7 @@ if (VOFFLOW_USE_VCPKG)
 
   FetchContent_Declare(vcpkg-download
     GIT_REPOSITORY https://github.com/microsoft/vcpkg.git
-    GIT_TAG 2024.04.26
+    GIT_TAG 2025.02.14
     SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/vcpkg)
   FetchContent_GetProperties(vcpkg-download)
   if (NOT vcpkg-download_POPULATED)
@@ -54,7 +67,7 @@ if (NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
   set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "RelWithDebInfo" "MinSizeRel")
 endif ()
 
-find_package(ParaView REQUIRED)
+find_package(ParaView 5.12 CONFIG REQUIRED)
 
 option(BUILD_SHARED_LIBS "Build shared libraries" ON)
 
@@ -74,8 +87,3 @@ paraview_plugin_build(
   LIBRARY_SUBDIRECTORY "${PARAVIEW_PLUGIN_SUBDIR}"
   INSTALL_HEADERS OFF
   PLUGINS ${plugins})
-
-option(VOFFLOW_TOOLS "Build tools." ON)
-if (VOFFLOW_TOOLS)
-  add_subdirectory(src/Tools)
-endif ()

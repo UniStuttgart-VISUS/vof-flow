@@ -2,11 +2,11 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <exception>
 #include <numeric>
 #include <string>
 #include <vector>
 
-#include <nlohmann/json.hpp>
 #include <vtkAlgorithm.h>
 #include <vtkCellData.h>
 #include <vtkDataArray.h>
@@ -27,12 +27,15 @@
 #include <vtkStreamingDemandDrivenPipeline.h>
 #include <vtkStringArray.h>
 #include <vtkVertexGlyphFilter.h>
+#include <vtk_nlohmannjson.h>
+#include VTK_NLOHMANN_JSON(json.hpp)
 
 #include "Advection.h"
 #include "Boundary.h"
 #include "ComponentExtraction.h"
 #include "Constants.h"
 #include "Grid/DomainInfo.h"
+#include "Grid/GridDataSet.h"
 #include "Grid/GridTypes.h"
 #include "Math/Vector.h"
 #include "Misc/ListSearch.h"
@@ -113,8 +116,6 @@ vtkVofTracking::vtkVofTracking()
 #endif
 }
 
-vtkVofTracking::~vtkVofTracking() = default;
-
 void vtkVofTracking::PrintSelf(ostream& os, vtkIndent indent) {
     this->Superclass::PrintSelf(os, indent);
 }
@@ -153,6 +154,7 @@ int vtkVofTracking::FillInputPortInformation(int port, vtkInformation* info) {
     // parallel using MPI.
     if (port == 0) {
         info->Set(vtkAlgorithm::INPUT_REQUIRED_DATA_TYPE(), "vtkRectilinearGrid");
+        info->Append(vtkAlgorithm::INPUT_REQUIRED_DATA_TYPE(), "vtkImageData");
         return 1;
     }
     return vtkDataSetAlgorithm::FillInputPortInformation(port, info);
@@ -182,20 +184,20 @@ int vtkVofTracking::RequestInformation(vtkInformation* vtkNotUsed(request), vtkI
         vtkLog(INFO, "RequestInformation");
     }
 
-    vtkInformation* inInfoGrid = inputVector[0]->GetInformationObject(0);
+    vtkInformation* inInfo = inputVector[0]->GetInformationObject(0);
 
-    if (!inInfoGrid->Has(vtkStreamingDemandDrivenPipeline::TIME_STEPS())) {
+    if (!inInfo->Has(vtkStreamingDemandDrivenPipeline::TIME_STEPS())) {
         vtkErrorMacro(<< "Input information has no TIME_STEPS set");
         return 0;
     }
 
-    auto numberOfTimeSteps = inInfoGrid->Length(vtkStreamingDemandDrivenPipeline::TIME_STEPS());
+    auto numberOfTimeSteps = inInfo->Length(vtkStreamingDemandDrivenPipeline::TIME_STEPS());
     if (numberOfTimeSteps <= 1) {
         vtkWarningMacro(<< "Not enough input time steps for topology computation");
     }
 
     timeStepValues_.resize(numberOfTimeSteps);
-    inInfoGrid->Get(vtkStreamingDemandDrivenPipeline::TIME_STEPS(), timeStepValues_.data());
+    inInfo->Get(vtkStreamingDemandDrivenPipeline::TIME_STEPS(), timeStepValues_.data());
 
     // Validate order of time steps, should be provided sorted from ParaView
     for (std::size_t i = 1; i < timeStepValues_.size(); i++) {
@@ -216,7 +218,7 @@ int vtkVofTracking::RequestUpdateExtent(vtkInformation* vtkNotUsed(request), vtk
         vtkLog(INFO, "RequestUpdateExtent");
     }
 
-    vtkInformation* inInfoGrid = inputVector[0]->GetInformationObject(0);
+    vtkInformation* inInfo = inputVector[0]->GetInformationObject(0);
 
     // set ghost level
     if (GhostCells < requiredNumGhostLevels_) {
@@ -228,7 +230,7 @@ int vtkVofTracking::RequestUpdateExtent(vtkInformation* vtkNotUsed(request), vtk
         outNumGhostLevels = std::max(outNumGhostLevels,
             outInfo->Get(vtkStreamingDemandDrivenPipeline::UPDATE_NUMBER_OF_GHOST_LEVELS()));
     }
-    inInfoGrid->Set(vtkStreamingDemandDrivenPipeline::UPDATE_NUMBER_OF_GHOST_LEVELS(), outNumGhostLevels);
+    inInfo->Set(vtkStreamingDemandDrivenPipeline::UPDATE_NUMBER_OF_GHOST_LEVELS(), outNumGhostLevels);
 
     // init and target time step
     timestepInit_ = std::clamp(InitTimeStep, 0, static_cast<int>(timeStepValues_.size() - 1));
@@ -244,7 +246,7 @@ int vtkVofTracking::RequestUpdateExtent(vtkInformation* vtkNotUsed(request), vtk
         // RequestUpdateExtent runs. Therefore, we are just reading from the input, not sure if this is meant to be
         // done this way, but it works so far. Side note: This only works in RequestUpdateExtent as expected. Later in
         // RequestData only the time step we request here from the streaming pipeline is returned.
-        double targetTime = inInfoGrid->Get(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP());
+        double targetTime = inInfo->Get(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP());
         timestepTarget_ = static_cast<int>(VofFlow::findClosestIndex(targetTime, timeStepValues_));
     }
     if (timestepTarget_ < timestepInit_) {
@@ -273,7 +275,7 @@ int vtkVofTracking::RequestUpdateExtent(vtkInformation* vtkNotUsed(request), vtk
 
     // Set time step for RequestData call
     if (timestepT1_ <= timestepTarget_) {
-        inInfoGrid->Set(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP(), timeStepValues_[timestepT1_]);
+        inInfo->Set(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP(), timeStepValues_[timestepT1_]);
     }
 
     return 1;
@@ -329,21 +331,21 @@ int vtkVofTracking::RequestData(vtkInformation* request, vtkInformationVector** 
         vtkLog(INFO, << state);
     }
 
-    vtkInformation* inInfoGrid = inputVector[0]->GetInformationObject(0);
-
-    vtkRectilinearGrid* inputGrid = vtkRectilinearGrid::SafeDownCast(inInfoGrid->Get(vtkDataObject::DATA_OBJECT()));
-    if (!inputGrid) {
+    vtkInformation* inInfo = inputVector[0]->GetInformationObject(0);
+    vtkDataSet* inputData = vtkDataSet::GetData(inInfo);
+    VofFlow::GridDataSet inputGrid(inputData);
+    if (!inputGrid.isValid()) {
         vtkErrorMacro(<< "Input grid missing!");
         return 0;
     }
 
     // Mapping in plugin xml: 0 = f; 1 = f3 (optional); 2 = norm (optional); 3 = velocity
     VofFlow::VofData inDataVof{
-        GetInputArrayToProcess(UseThreePhase ? 1 : 0, inputGrid),
-        UseThreePhase ? GetInputArrayToProcess(0, inputGrid) : nullptr,
-        UseThreePhase ? GetInputArrayToProcess(2, inputGrid) : nullptr,
+        GetInputArrayToProcess(UseThreePhase ? 1 : 0, inputData),
+        UseThreePhase ? GetInputArrayToProcess(0, inputData) : nullptr,
+        UseThreePhase ? GetInputArrayToProcess(2, inputData) : nullptr,
     };
-    vtkSmartPointer<vtkDataArray> inDataVelocity = GetInputArrayToProcess(3, inputGrid);
+    vtkSmartPointer<vtkDataArray> inDataVelocity = GetInputArrayToProcess(3, inputData);
     if (inDataVof.vof1st == nullptr ||
         (UseThreePhase && (inDataVof.vof2nd == nullptr || inDataVof.vof2ndNorm == nullptr))) {
         vtkErrorMacro(<< "VoF input array missing!");
@@ -353,8 +355,8 @@ int vtkVofTracking::RequestData(vtkInformation* request, vtkInformationVector** 
     vtkSmartPointer<vtkDataArray> inDataComponents1 = nullptr;
     vtkSmartPointer<vtkDataArray> inDataComponents2 = nullptr;
     if (UseComponents) {
-        inDataComponents1 = GetInputArrayToProcess(UseThreePhase ? 5 : 4, inputGrid);
-        inDataComponents2 = UseThreePhase ? GetInputArrayToProcess(4, inputGrid) : nullptr;
+        inDataComponents1 = GetInputArrayToProcess(UseThreePhase ? 5 : 4, inputData);
+        inDataComponents2 = UseThreePhase ? GetInputArrayToProcess(4, inputData) : nullptr;
         if (inDataComponents1 == nullptr || (UseThreePhase && inDataComponents2 == nullptr)) {
             vtkErrorMacro(<< "Component input array missing!");
             return 0;
@@ -378,7 +380,7 @@ int vtkVofTracking::RequestData(vtkInformation* request, vtkInformationVector** 
 
             TIME_MEASURE_SYNC_START(TimeMeasure::Name::Seeding);
 
-            domainInfo_ = std::make_unique<VofFlow::DomainInfo>(inputGrid, mpiController_);
+            domainInfo_ = std::make_unique<VofFlow::DomainInfo>(inputData, mpiController_);
             seedInfo_ = std::make_unique<VofFlow::SeedCoordInfo>(*domainInfo_, Refinement);
 
             if (OutputDataType == 2 && !domainInfo_->isUniform()) {
@@ -403,7 +405,7 @@ int vtkVofTracking::RequestData(vtkInformation* request, vtkInformationVector** 
         } else {
             // Validate domain info by checking if extent did not change over time.
             VofFlow::extent_t inExtent{};
-            inputGrid->GetExtent(inExtent.data());
+            inputGrid.GetExtent(inExtent);
             if (domainInfo_->localExtent() != inExtent) {
                 vtkErrorMacro(<< "Input data extent changed! This is not supported!");
                 return 0;
@@ -509,8 +511,13 @@ int vtkVofTracking::RequestData(vtkInformation* request, vtkInformationVector** 
                     exchangeBoundarySeeds(*domainInfo_, *seedInfo_, boundarySeedPoints, mpiController_);
             }
 
-            vtkSmartPointer<vtkPolyData> boundaries = VofFlow::generateBoundary(*domainInfo_, *seedInfo_,
-                boundarySeedPoints, neighborBoundarySeedPoints, BoundaryMethod, false);
+            vtkSmartPointer<vtkPolyData> boundaries =
+                VofFlow::generateBoundary(*seedInfo_, boundarySeedPoints, neighborBoundarySeedPoints, BoundaryMethod);
+            // Clamp ghost cells
+            bool clipGhost = false;
+            if (clipGhost) {
+                VofFlow::clipPolyData(boundaries, domainInfo_->localZeroBounds());
+            }
 
             TIME_MEASURE_END(TimeMeasure::Name::Boundary);
 
@@ -542,16 +549,9 @@ int vtkVofTracking::RequestData(vtkInformation* request, vtkInformationVector** 
             outputBoundary->ShallowCopy(boundaries);
 
             if (OutputDataType == 1) {
-                vtkRectilinearGrid::SafeDownCast(outputGrid)->CopyStructure(domainInfo_->grid());
+                vtkRectilinearGrid::SafeDownCast(outputGrid)->CopyStructure(domainInfo_->getRectilinearGrid());
             } else if (OutputDataType == 2) {
-                auto* img = vtkImageData::SafeDownCast(outputGrid);
-                const auto& ext = domainInfo_->localExtent();
-                const auto& dims = domainInfo_->cellDims();
-                const auto& bounds = domainInfo_->localBounds();
-                img->SetExtent(ext[0], ext[1], ext[2], ext[3], ext[4], ext[5]);
-                img->SetOrigin(bounds[0], bounds[2], bounds[4]);
-                img->SetSpacing((bounds[1] - bounds[0]) / dims[0], (bounds[3] - bounds[2]) / dims[1],
-                    (bounds[5] - bounds[4]) / dims[2]);
+                vtkImageData::SafeDownCast(outputGrid)->CopyStructure(domainInfo_->getImageData());
             } else {
                 vtkErrorMacro(<< "Invalid OutputDataType!");
                 return 0;
@@ -643,6 +643,8 @@ std::string vtkVofTracking::stateJson() const {
     domain["LocalZeroBounds"] = domainInfo_->localZeroBounds();
     domain["GlobalBounds"] = domainInfo_->globalBounds();
     domain["CellDims"] = domainInfo_->cellDims();
+    domain["GlobalCellDims"] = domainInfo_->globalCellDims();
+    domain["LocalCellDimsOffset"] = domainInfo_->localCellDimsOffset();
     domain["IsUniform"] = domainInfo_->isUniform();
     domain["IsParallel"] = domainInfo_->isParallel();
     json mpi;

@@ -3,13 +3,14 @@
 #include <vector>
 
 #include <CGAL/intersections.h>
+#include <vtkDataSet.h>
 #include <vtkPolyData.h>
-#include <vtkRectilinearGrid.h>
 
 #include "Grid/DomainInfo.h"
 #include "Grid/GridIterator.h"
 #include "Grid/GridTypes.h"
 #include "Misc/CgalUtil.h"
+#include "Misc/CgalVariant.h"
 #include "Misc/Profiling.h"
 #include "Misc/VofData.h"
 #include "Plic/Plic3.h"
@@ -18,7 +19,7 @@
 
 vtkStandardNewMacro(vtkPlic3);
 
-int vtkPlic3::calcPlic(vtkRectilinearGrid* input, vtkPolyData* output) {
+int vtkPlic3::calcPlic(vtkDataSet* input, vtkPolyData* output) {
     ZoneScoped;
 
     VofFlow::DomainInfo domainInfo(input, mpiController_);
@@ -62,14 +63,14 @@ int vtkPlic3::calcPlic(vtkRectilinearGrid* input, vtkPolyData* output) {
 
             const auto result = CGAL::intersection(plane1, plane2);
             if (result) {
-                if (const VofFlow::K::Line_3* l = boost::get<VofFlow::K::Line_3>(&*result)) {
+                if (const VofFlow::K::Line_3* l = variant_get<VofFlow::K::Line_3>(&*result)) {
                     const auto result2 = CGAL::intersection(plic1.cell.cellCube(), *l);
                     if (result2) {
-                        if (const VofFlow::K::Segment_3* s = boost::get<VofFlow::K::Segment_3>(&*result2)) {
+                        if (const VofFlow::K::Segment_3* s = variant_get<VofFlow::K::Segment_3>(&*result2)) {
                             polyPoints.push_back(s->source());
                             polyPoints.push_back(s->target());
                         } else {
-                            const VofFlow::K::Point_3* p = boost::get<VofFlow::K::Point_3>(&*result2);
+                            const VofFlow::K::Point_3* p = variant_get<VofFlow::K::Point_3>(&*result2);
                             polyPoints.push_back(*p);
                         }
                     }

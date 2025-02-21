@@ -38,7 +38,10 @@ namespace {
         inline ValueType gradientXDim(const vtkDataArrayAccessor<vtkAOSDataArrayTemplate<ValueType>>& data, int y,
             int z) {
             const auto& cellSizesX = domainInfo_.cellSizesX();
-            if (borderXmin_) {
+            if (borderXmin_ && borderXmax_) {
+                // single cell
+                return static_cast<ValueType>(0.0);
+            } else if (borderXmin_) {
                 // forward difference
                 const ValueType val0 = data.Get(domainInfo_.gridCoordToIdx(x_, y, z), 0);
                 const ValueType val1 = data.Get(domainInfo_.gridCoordToIdx(x_ + 1, y, z), 0);
@@ -60,7 +63,10 @@ namespace {
         inline ValueType gradientYDim(const vtkDataArrayAccessor<vtkAOSDataArrayTemplate<ValueType>>& data, int x,
             int z) {
             const auto& cellSizesY = domainInfo_.cellSizesY();
-            if (borderYmin_) {
+            if (borderYmin_ && borderYmax_) {
+                // single cell
+                return static_cast<ValueType>(0.0);
+            } else if (borderYmin_) {
                 // forward difference
                 const ValueType val0 = data.Get(domainInfo_.gridCoordToIdx(x, y_, z), 0);
                 const ValueType val1 = data.Get(domainInfo_.gridCoordToIdx(x, y_ + 1, z), 0);
@@ -82,7 +88,10 @@ namespace {
         inline ValueType gradientZDim(const vtkDataArrayAccessor<vtkAOSDataArrayTemplate<ValueType>>& data, int x,
             int y) {
             const auto& cellSizesZ = domainInfo_.cellSizesZ();
-            if (borderZmin_) {
+            if (borderZmin_ && borderZmax_) {
+                // single cell
+                return static_cast<ValueType>(0.0);
+            } else if (borderZmin_) {
                 // forward difference
                 const ValueType val0 = data.Get(domainInfo_.gridCoordToIdx(x, y, z_), 0);
                 const ValueType val1 = data.Get(domainInfo_.gridCoordToIdx(x, y, z_ + 1), 0);

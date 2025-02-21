@@ -9,6 +9,7 @@
 #include <stdexcept>
 #include <vector>
 
+#include <vtkImageData.h>
 #include <vtkRectilinearGrid.h>
 #include <vtkSmartPointer.h>
 #include <vtkType.h>
@@ -29,10 +30,20 @@ namespace VofFlow {
             bounds_t zeroBounds{};
         };
 
-        explicit DomainInfo(vtkRectilinearGrid* grid, vtkMPIController* mpiController = nullptr);
+        explicit DomainInfo(vtkDataSet* dataset, vtkMPIController* mpiController = nullptr);
 
-        [[nodiscard]] inline vtkRectilinearGrid* grid() const {
-            return grid_;
+        [[nodiscard]] inline vtkImageData* getImageData() {
+            if (imageDataStructure_ == nullptr) {
+                createImageData();
+            }
+            return imageDataStructure_;
+        }
+
+        [[nodiscard]] inline vtkRectilinearGrid* getRectilinearGrid() {
+            if (rectilinearGridStructure_ == nullptr) {
+                createRectilinearGrid();
+            }
+            return rectilinearGridStructure_;
         }
 
         [[nodiscard]] inline const extent_t& localExtent() const {
@@ -60,7 +71,15 @@ namespace VofFlow {
         }
 
         [[nodiscard]] inline const dim_t& cellDims() const {
-            return dims_;
+            return localDims_;
+        }
+
+        [[nodiscard]] inline const dim_t& globalCellDims() const {
+            return globalDims_;
+        }
+
+        [[nodiscard]] inline const dim_t& localCellDimsOffset() const {
+            return localDimsOffset_;
         }
 
         [[nodiscard]] inline bool isUniform() const {
@@ -120,8 +139,13 @@ namespace VofFlow {
         }
 
         [[nodiscard]] inline vtkIdType numCells() const {
-            return static_cast<vtkIdType>(dims_[0]) * static_cast<vtkIdType>(dims_[1]) *
-                   static_cast<vtkIdType>(dims_[2]);
+            return static_cast<vtkIdType>(localDims_[0]) * static_cast<vtkIdType>(localDims_[1]) *
+                   static_cast<vtkIdType>(localDims_[2]);
+        }
+
+        [[nodiscard]] inline vtkIdType numCellsGlobal() const {
+            return static_cast<vtkIdType>(globalDims_[0]) * static_cast<vtkIdType>(globalDims_[1]) *
+                   static_cast<vtkIdType>(globalDims_[2]);
         }
 
         [[nodiscard]] inline posCoords_t coords(int x, int y, int z) const {
@@ -205,27 +229,19 @@ namespace VofFlow {
         }
 
         [[nodiscard]] inline vtkIdType gridCoordToIdx(int g_x, int g_y, int g_z) const {
-            return static_cast<vtkIdType>(g_x) + static_cast<vtkIdType>(g_y) * static_cast<vtkIdType>(dims_[0]) +
-                   static_cast<vtkIdType>(g_z) * static_cast<vtkIdType>(dims_[0]) * static_cast<vtkIdType>(dims_[1]);
+            return Grid::gridCoordToIdx({g_x, g_y, g_z}, localDims_);
         }
 
         [[nodiscard]] inline vtkIdType gridCoordToIdx(const gridCoords_t& g_coords) const {
-            return gridCoordToIdx(g_coords[0], g_coords[1], g_coords[2]);
+            return Grid::gridCoordToIdx(g_coords, localDims_);
         }
 
         [[nodiscard]] inline gridCoords_t idxToGridCoord(vtkIdType idx) const {
-            const int g_x = static_cast<int>(idx % dims_[0]);
-            const int g_y = static_cast<int>((idx / dims_[0]) % dims_[1]);
-            const int g_z = static_cast<int>(idx / (dims_[0] * dims_[1]));
-            return {g_x, g_y, g_z};
+            return Grid::idxToGridCoord(idx, localDims_);
         }
 
         [[nodiscard]] inline vtkIdType localExtentCoordToIdx(int e_x, int e_y, int e_z) const {
-            if (!isInLocalExtent(e_x, e_y, e_z)) {
-                throw std::runtime_error("Extent coord out of bounds!");
-            }
-            return (e_x - localExtent_[0]) + (e_y - localExtent_[2]) * dims_[0] +
-                   (e_z - localExtent_[4]) * dims_[0] * dims_[1];
+            return Grid::gridCoordToIdx(localExtentCoordToGridCoord(e_x, e_y, e_z), localDims_);
         }
 
         [[nodiscard]] inline vtkIdType localExtentCoordToIdx(const gridCoords_t& e_coords) const {
@@ -404,14 +420,20 @@ namespace VofFlow {
             return true;
         }
 
-        vtkSmartPointer<vtkRectilinearGrid> grid_;
+        void createImageData();
+        void createRectilinearGrid();
+
+        vtkSmartPointer<vtkImageData> imageDataStructure_;
+        vtkSmartPointer<vtkRectilinearGrid> rectilinearGridStructure_;
         extent_t localExtent_;     // Extent of thread local grid.
         extent_t localZeroExtent_; // Extent of the thread local grid without ghost cells.
         extent_t globalExtent_;    // Extent of the global grid across all threads.
         bounds_t localBounds_;     // Bounds of the thread local grid domain.
         bounds_t localZeroBounds_; // Bounds of the thread local grid domain without ghost cells.
         bounds_t globalBounds_;    // Bounds of the global grid domain across all threads.
-        dim_t dims_;
+        dim_t localDims_;
+        dim_t globalDims_;
+        dim_t localDimsOffset_;
         bool isUniform_;
         bool isParallel_;
         vtkSmartPointer<vtkUnsignedCharArray> ghostArray_;

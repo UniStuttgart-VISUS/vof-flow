@@ -4,9 +4,9 @@
 
 #include "PlicModule.h"
 
+class vtkDataSet;
 class vtkMPIController;
 class vtkPolyData;
-class vtkRectilinearGrid;
 
 class PLIC_EXPORT vtkAbstractPlic : public vtkPolyDataAlgorithm {
 public:
@@ -34,7 +34,7 @@ protected:
     int RequestData(vtkInformation* request, vtkInformationVector** inputVector,
         vtkInformationVector* outputVector) override;
 
-    virtual int calcPlic(vtkRectilinearGrid* input, vtkPolyData* output);
+    virtual int calcPlic(vtkDataSet* input, vtkPolyData* output);
 
     double Epsilon;
     int NumIterations;

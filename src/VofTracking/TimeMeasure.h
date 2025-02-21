@@ -20,20 +20,20 @@
 #define TIME_MEASURE_BARRIER() TimeMeasure::getInstance().barrier()
 #define TIME_MEASURE_JSON(J) TimeMeasure::getInstance().toJson(J)
 
-#include <algorithm>
 #include <chrono>
 #include <cstdint>
 #include <ctime>
-#include <fstream>
 #include <iomanip>
 #include <memory>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
-#include <nlohmann/json.hpp>
 #include <vtkMPIController.h>
+#include <vtk_nlohmannjson.h>
+#include VTK_NLOHMANN_JSON(json.hpp)
 
 class TimeMeasure {
 public:

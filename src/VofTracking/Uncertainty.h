@@ -1,7 +1,6 @@
 #pragma once
 
 #include <vtkFloatArray.h>
-#include <vtkIntArray.h>
 #include <vtkSmartPointer.h>
 
 #include "Grid/DomainInfo.h"

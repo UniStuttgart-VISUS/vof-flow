@@ -2,7 +2,10 @@ NAME
   VofFlow::VofTracking
 DEPENDS
   VTK::CommonCore
+  VTK::CommonExecutionModel
   VTK::FiltersCore
   VTK::FiltersGeneral
+  VTK::FiltersParallel
   VTK::ParallelMPI
+  VTK::nlohmannjson
   VofFlow::VofDataUtils

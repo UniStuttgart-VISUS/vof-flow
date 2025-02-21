@@ -12,14 +12,13 @@ We tested this setup with Ubuntu 22.04.
 
 ### Option 1: Using Prebuild Binaries
 
-Plugin binaries for ParaView 5.12.0 are provided on the [Release Page](https://github.com/UniStuttgart-VISUS/vof-flow/releases).
-They are compatible with the official ParaView 5.12.0 MPI release for Linux available from the [ParaView website](https://www.paraview.org/download/):
+Plugin binaries for ParaView 5.13.2 are provided on the [Release Page](https://github.com/UniStuttgart-VISUS/vof-flow/releases).
+They are compatible with the official ParaView 5.13.2 MPI release for Linux available from the [ParaView website](https://www.paraview.org/download/):
 
-- [Download ParaView 5.12.0 MPI Linux](https://www.paraview.org/paraview-downloads/download.php?submit=Download&version=v5.12&type=binary&os=Linux&downloadFile=ParaView-5.12.0-MPI-Linux-Python3.10-x86_64.tar.gz)
+- [Download ParaView 5.13.2 MPI Linux](https://www.paraview.org/paraview-downloads/download.php?submit=Download&version=v5.13&type=binary&os=Linux&downloadFile=ParaView-5.13.2-MPI-Linux-Python3.10-x86_64.tar.gz)
 
 Please unpack all downloaded files to `~/vofflow/install`, i.e., the `paraview` binary should be located at `~/vofflow/install/bin/paraview`.
 This path is assumed in our example scripts.
-Further, make the tool binaries from our plugin executable: `cd ~/vofflow/install/bin/ && chmod +x SeedGrid PolyGap SmoothNormals MaxVelocity`.
 
 > The released plugin binaries for Linux are compiled using the [GitHub Actions workflow in this repository](../.github/workflows/build.yml).
 > The workflow is based on the [ParaViewEasyPluginBuilder](https://gitlab.kitware.com/paraview/paraview-easy-plugin-builder).
@@ -28,7 +27,7 @@ Further, make the tool binaries from our plugin executable: `cd ~/vofflow/instal
 ### Option 2: Build Plugin using the ParaViewEasyPluginBuilder
 
 This option also uses the official ParaView release but compiles the plugin locally.
-Please follow the steps from Option 1 to download and unpack the ParaView 5.12.0 release.
+Please follow the steps from Option 1 to download and unpack the ParaView 5.13.2 release.
 Please make sure Docker is installed on the system, see [https://docs.docker.com/engine/install/ubuntu/](https://docs.docker.com/engine/install/ubuntu/).
 
 Then, run [`./build_plugin_linux.sh`](scripts/build_plugin_linux.sh) to build the plugin binaries.
@@ -43,7 +42,7 @@ Please move the content from `plugin_build` to `~/vofflow/install`.
 
 - Install build environment:
   ```shell
-  sudo apt install build-essential git cmake ninja-build
+  sudo apt install build-essential git git-lfs cmake ninja-build
   ```
 - Install ParaView dependencies:
   ```shell
@@ -56,7 +55,7 @@ Please move the content from `plugin_build` to `~/vofflow/install`.
 - Clone ParaView and VofFlow:
   ```shell
   mkdir ~/vofflow && cd ~/vofflow
-  git clone --recursive --branch v5.12.0 https://gitlab.kitware.com/paraview/paraview.git
+  git clone --recursive --branch v5.13.2 https://gitlab.kitware.com/paraview/paraview.git
   git clone https://github.com/UniStuttgart-VISUS/vof-flow.git
   ```
 - Configure, Build, and Install ParaView:
@@ -76,16 +75,19 @@ Please move the content from `plugin_build` to `~/vofflow/install`.
   cd ..
   ```
 
-> This manual setup was tested with ParaView 5.11.1 and 5.12.0.
+> This manual setup was tested with ParaView 5.13.2.
 
 #### Alternative using system packages instead of vcpkg
 
 By default, all dependencies except ParaView itself are downloaded automatically using vcpkg during the CMake configure of our project.
 If you prefer system packages over vcpkg, you can install them manually:
+
 ```shell
-sudo apt install libcgal-dev nlohmann-json3-dev
+sudo apt install libcgal-dev
 ```
+
 In the VofFlow configure step, pass the additional parameter `-DVOFFLOW_USE_VCPKG=OFF`:
+
 ```shell
 cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=~/vofflow/install -DCMAKE_INSTALL_PREFIX=../install -DVOFFLOW_USE_VCPKG=OFF ../vof-flow/
 ```
@@ -99,6 +101,7 @@ We provide a CMake option to disable downloading Boost with vcpkg: `-DVOFFLOW_DI
 
 We have published the jet-collision dataset from our paper here: [https://doi.org/10.18419/darus-4225](https://doi.org/10.18419/darus-4225).
 We provide the script `download_data.py` to download all files automatically.
+The script requires the Python package `requests`, e.g., run `pip install -r requirements.txt`.
 
 The script can be run with different options to download the different versions of the dataset:
 
@@ -113,9 +116,9 @@ Please move the downloaded datasets to `~/vofflow/data`.
 ### Prerequisites
 
 Our reproducibility scripts assume that:
+
 - The ParaView binary is installed at `~/vofflow/install/bin/paraview` (and `pvbatch`, etc.)
-- The Plugin is installed at `~/vofflow/install/lib/paraview-5.12/plugins/VofFlow/VofFlow.so`
-- The Plugin tools are installed at `~/vofflow/install/bin/SeedGrid` (and `PolyGap`, `SmoothNormals`, `MaxVelocity`)
+- The Plugin is installed at `~/vofflow/install/lib/paraview-5.13/plugins/VofFlow/VofFlow.so`
 - The dataset "ds2" was downloaded at `~/vofflow/data/jet-collision-ds2/jet-collision-ds2.pvd`
 
 All scripts have the paths configured at the top.
@@ -124,24 +127,25 @@ If your setup varies, you can update the paths accordingly, i.e., if you use one
 ### Run Separation Boundaries
 
 This step runs our algorithm and writes all resulting data, i.e., the separation boundaries, to disk in the VTK data formats.
-The output is written to `~/vofflow/output/result`
+The output is written to `~/vofflow/output/result`.
 
 ```shell
 ~/vofflow/install/bin/pvbatch separation_boundaries.py
 ```
 
 Due to the computation time, we recommend running this step with MPI:
+
 ```shell
 mpirun -np 32 ~/vofflow/install/bin/pvbatch separation_boundaries.py
 ```
 
-### Run Surface Smoothing Post Processing Step
+### Run Surface Smoothing Post-Processing Step
+
+The surface smoothing filter is not MPI aware.
+It is recommended to run the post-processing step without MPI to avoid gaps at process boundaries.
 
 ```shell
-cd ~/vofflow/output/result
-~/vofflow/install/bin/SeedGrid seeds.pvd seed_grid.vti
-~/vofflow/install/bin/PolyGap bound.pvd seed_grid.vti bound_gap.vtp
-~/vofflow/install/bin/SmoothNormals bound_gap.vtp bound_gap_smoothed.vtp
+~/vofflow/install/bin/pvbatch surface_smoothing.py
 ```
 
 ### Run Separation Boundary Rendering

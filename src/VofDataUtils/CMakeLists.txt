@@ -1,19 +1,25 @@
 # Overwrite policy version inherited vom ParaView CMake.
 cmake_policy(PUSH)
-cmake_policy(VERSION 3.12...3.29)
+cmake_policy(VERSION 3.12...3.31)
 
-find_package(CGAL REQUIRED)
+if (POLICY CMP0169)
+  cmake_policy(SET CMP0169 OLD)
+endif ()
 
-vtk_module_add_module(VofFlow::VofDataUtils FORCE_STATIC
+find_package(CGAL CONFIG REQUIRED)
+
+vtk_module_add_module(VofFlow::VofDataUtils FORCE_STATIC HEADER_DIRECTORIES
   NOWRAP_HEADERS
     Grid/DataInterpolation.h
     Grid/DomainInfo.h
     Grid/Gradient.h
     Grid/GridData.h
+    Grid/GridDataSet.h
     Grid/GridIterator.h
     Grid/GridTypes.h
     Math/Vector.h
     Misc/CgalUtil.h
+    Misc/CgalVariant.h
     Misc/ListSearch.h
     Misc/Profiling.h
     Misc/VofData.h
@@ -48,8 +54,8 @@ option(VOFFLOW_USE_TRACY "" OFF)
 if (VOFFLOW_USE_TRACY)
   # We require TRACY_DELAYED_INIT. This would require an vcpkg overlay port, use fetch content instead.
   FetchContent_Declare(tracy
-    URL "https://github.com/wolfpld/tracy/archive/v0.10.tar.gz"
-    URL_HASH SHA256=a76017d928f3f2727540fb950edd3b736caa97b12dbb4e5edce66542cbea6600)
+    URL "https://github.com/wolfpld/tracy/archive/v0.11.1.tar.gz"
+    URL_HASH SHA256=2c11ca816f2b756be2730f86b0092920419f3dabc7a7173829ffd897d91888a1)
   FetchContent_GetProperties(tracy)
   if (NOT tracy_POPULATED)
     message(STATUS "Fetch tracy ...")

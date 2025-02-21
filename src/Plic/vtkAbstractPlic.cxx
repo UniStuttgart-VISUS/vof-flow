@@ -1,9 +1,12 @@
 #include "vtkAbstractPlic.h"
 
 #include <algorithm>
+#include <exception>
 
 #include <vtkAlgorithm.h>
 #include <vtkDataObject.h>
+#include <vtkDataSet.h>
+#include <vtkImageData.h>
 #include <vtkInformation.h>
 #include <vtkInformationVector.h>
 #include <vtkMPIController.h>
@@ -20,6 +23,7 @@ vtkAbstractPlic::vtkAbstractPlic() : Epsilon(0.0), NumIterations(20) {
 
 int vtkAbstractPlic::FillInputPortInformation(int vtkNotUsed(port), vtkInformation* info) {
     info->Set(vtkAlgorithm::INPUT_REQUIRED_DATA_TYPE(), "vtkRectilinearGrid");
+    info->Append(vtkAlgorithm::INPUT_REQUIRED_DATA_TYPE(), "vtkImageData");
     return 1;
 }
 
@@ -38,8 +42,8 @@ int vtkAbstractPlic::RequestUpdateExtent(vtkInformation* vtkNotUsed(request), vt
 int vtkAbstractPlic::RequestData(vtkInformation* vtkNotUsed(request), vtkInformationVector** inputVector,
     vtkInformationVector* outputVector) {
     vtkInformation* inInfo = inputVector[0]->GetInformationObject(0);
-    vtkRectilinearGrid* input = vtkRectilinearGrid::SafeDownCast(inInfo->Get(vtkDataObject::DATA_OBJECT()));
-    if (!input) {
+    vtkDataSet* input = vtkDataSet::GetData(inInfo);
+    if (vtkImageData::SafeDownCast(input) == nullptr && vtkRectilinearGrid::SafeDownCast(input) == nullptr) {
         vtkErrorMacro(<< "Input data is missing!");
         return 0;
     }
@@ -55,6 +59,6 @@ int vtkAbstractPlic::RequestData(vtkInformation* vtkNotUsed(request), vtkInforma
     }
 }
 
-int vtkAbstractPlic::calcPlic(vtkRectilinearGrid* vtkNotUsed(input), vtkPolyData* vtkNotUsed(output)) {
+int vtkAbstractPlic::calcPlic(vtkDataSet* vtkNotUsed(input), vtkPolyData* vtkNotUsed(output)) {
     return 1;
 }

@@ -3,7 +3,10 @@ from paraview.simple import *
 
 # Config
 dataset = '~/vofflow/data/jet-collision-ds2/jet-collision-ds2.0152.vtr'
-plugin_path = '~/vofflow/install/lib/paraview-5.12/plugins/VofFlow/VofFlow.so'
+if os.name == 'nt':
+    plugin_path = '~/vofflow/install/bin/paraview-5.13/plugins/VofFlow/VofFlow.dll'
+else:
+    plugin_path = '~/vofflow/install/lib/paraview-5.13/plugins/VofFlow/VofFlow.so'
 output_path = '~/vofflow/output/jet_plic.png'
 
 # Load plugin

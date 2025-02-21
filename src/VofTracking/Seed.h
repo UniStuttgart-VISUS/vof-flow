@@ -20,6 +20,7 @@
 namespace VofFlow {
     class SeedCoordInfo {
     public:
+        SeedCoordInfo(const dim_t& globalCellDims, const bounds_t& globalBounds, int refinement);
         SeedCoordInfo(const DomainInfo& domainInfo, int refinement);
 
         [[nodiscard]] int numPointsPerCellDim() const {
@@ -36,6 +37,10 @@ namespace VofFlow {
 
         [[nodiscard]] vtkIdType numPointsZ() const {
             return numPointsZ_;
+        }
+
+        [[nodiscard]] const bounds_t& globalBounds() const {
+            return globalBounds_;
         }
 
         [[nodiscard]] inline vtkIdType seedCoordToIdx(int s_x, int s_y, int s_z) const {
@@ -55,12 +60,12 @@ namespace VofFlow {
             return std::max(0, refinement) + 1;
         }
 
-        const DomainInfo& domainInfo_;
         int refinement_;
         int numPointsPerCellDim_;
         vtkIdType numPointsX_;
         vtkIdType numPointsY_;
         vtkIdType numPointsZ_;
+        bounds_t globalBounds_;
     };
 
     struct SeedPoints {

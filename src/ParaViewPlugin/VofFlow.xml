@@ -16,6 +16,7 @@
                     <Group name="filters"/>
                 </ProxyGroupDomain>
                 <DataTypeDomain name="input_type">
+                    <DataType value="vtkImageData"/>
                     <DataType value="vtkRectilinearGrid"/>
                 </DataTypeDomain>
                 <InputArrayDomain
@@ -493,6 +494,176 @@
 
         </SourceProxy>
 
+        <SourceProxy name="VofBoundary" class="vtkVofBoundary" label="Vof Boundary">
+            <Documentation
+                long_help="Generate separation boundaries from labeled seed points."
+                short_help="VoF boundary.">
+            </Documentation>
+
+            <InputProperty
+                name="Input"
+                port_index="0"
+                command="SetInputConnection"
+                label="Input Data">
+                <ProxyGroupDomain name="groups">
+                    <Group name="sources"/>
+                    <Group name="filters"/>
+                </ProxyGroupDomain>
+                <DataTypeDomain name="input_type">
+                    <DataType value="vtkPolyData"/>
+                </DataTypeDomain>
+                <InputArrayDomain
+                    attribute_type="point"
+                    name="input_array"
+                    number_of_components="1"/>
+                <Documentation>
+                    Seed points with label array.
+                </Documentation>
+            </InputProperty>
+
+            <IntVectorProperty
+                name="BoundaryMode"
+                label="Boundary Mode"
+                command="SetBoundaryMode"
+                number_of_elements="1"
+                default_values="3"
+                panel_visibility="advanced">
+                <EnumerationDomain name="enum">
+                    <Entry value="0" text="None"/>
+                    <Entry value="1" text="PolyGap"/>
+                    <Entry value="2" text="SmoothPolyData"/>
+                    <Entry value="3" text="MappedNormals"/>
+                </EnumerationDomain>
+            </IntVectorProperty>
+
+            <OutputPort index="0" name="Boundaries"/>
+
+            <Hints>
+                <ShowInMenu category="VofFlow"/>
+            </Hints>
+
+        </SourceProxy>
+
+        <SourceProxy name="VofMaxVelocity" class="vtkVofMaxVelocity" label="Vof Max Velocity">
+            <Documentation
+                long_help="Extract maximum velocity in VoF-datasets."
+                short_help="VoF max velocity.">
+            </Documentation>
+
+            <InputProperty
+                name="Input"
+                port_index="0"
+                command="SetInputConnection"
+                label="Input Grid">
+                <ProxyGroupDomain name="groups">
+                    <Group name="sources"/>
+                    <Group name="filters"/>
+                </ProxyGroupDomain>
+                <DataTypeDomain name="input_type">
+                    <DataType value="vtkImageData"/>
+                    <DataType value="vtkRectilinearGrid"/>
+                </DataTypeDomain>
+                <InputArrayDomain
+                    attribute_type="cell"
+                    name="input_array_velocity"
+                    number_of_components="3"/>
+                <InputArrayDomain
+                    attribute_type="cell"
+                    name="input_array_vof1"
+                    number_of_components="1"/>
+                <InputArrayDomain
+                    attribute_type="cell"
+                    name="input_array_vof2"
+                    number_of_components="1"
+                    optional="1"/>
+                <Documentation>
+                    Grid with VoF and velocity arrays.
+                </Documentation>
+            </InputProperty>
+
+            <StringVectorProperty
+                name="SelectInputVectorsVelocity"
+                label="Velocity"
+                command="SetInputArrayToProcess"
+                number_of_elements="5"
+                element_types="0 0 0 0 2"
+                animateable="0"
+                default_values="0">
+                <ArrayListDomain
+                    name="array_list"
+                    attribute_type="Vectors"
+                    input_domain_name="input_array_velocity">
+                    <RequiredProperties>
+                        <Property name="Input" function="Input"/>
+                    </RequiredProperties>
+                </ArrayListDomain>
+                <Documentation>
+                    Velocity field.
+                </Documentation>
+            </StringVectorProperty>
+
+            <StringVectorProperty
+                name="SelectInputScalarsVof1"
+                label="VoF1"
+                command="SetInputArrayToProcess"
+                number_of_elements="5"
+                element_types="0 0 0 0 2"
+                animateable="0"
+                default_values="1">
+                <ArrayListDomain
+                    name="array_list"
+                    attribute_type="Scalars"
+                    input_domain_name="input_array_vof1">
+                    <RequiredProperties>
+                        <Property name="Input" function="Input"/>
+                    </RequiredProperties>
+                </ArrayListDomain>
+                <Documentation>
+                    Volume of fluid field 1.
+                </Documentation>
+            </StringVectorProperty>
+
+            <StringVectorProperty
+                name="SelectInputScalarsVof2"
+                label="VoF2"
+                command="SetInputArrayToProcess"
+                number_of_elements="5"
+                element_types="0 0 0 0 2"
+                animateable="0"
+                default_values="2">
+                <ArrayListDomain
+                    name="array_list"
+                    attribute_type="Scalars"
+                    input_domain_name="input_array_vof2"
+                    none_string="None">
+                    <RequiredProperties>
+                        <Property name="Input" function="Input"/>
+                    </RequiredProperties>
+                </ArrayListDomain>
+                <Documentation>
+                    Volume of fluid field 2.
+                </Documentation>
+            </StringVectorProperty>
+
+            <DoubleVectorProperty
+                name="Epsilon"
+                label="Epsilon"
+                command="SetEpsilon"
+                number_of_elements="1"
+                default_values="0.00001"
+                panel_visibility="advanced">
+            </DoubleVectorProperty>
+
+            <OutputPort index="0" name="Histogram"/>
+
+            <Hints>
+                <ShowInMenu category="VofFlow"/>
+                <View type="XYBarChartView"/>
+                <Plotable/>
+            </Hints>
+
+        </SourceProxy>
+
         <SourceProxy name="Plic" class="vtkPlic" label="PLIC">
             <Documentation
                 long_help="Calculate PLIC surface."
@@ -509,6 +680,7 @@
                     <Group name="filters"/>
                 </ProxyGroupDomain>
                 <DataTypeDomain name="input_type">
+                    <DataType value="vtkImageData"/>
                     <DataType value="vtkRectilinearGrid"/>
                 </DataTypeDomain>
                 <InputArrayDomain
@@ -581,6 +753,7 @@
                     <Group name="filters"/>
                 </ProxyGroupDomain>
                 <DataTypeDomain name="input_type">
+                    <DataType value="vtkImageData"/>
                     <DataType value="vtkRectilinearGrid"/>
                 </DataTypeDomain>
                 <InputArrayDomain
@@ -688,6 +861,8 @@
     <ParaViewFilters>
         <Category name="VofFlow" menu_label="&amp;VofFlow" show_in_toolbar="1">
             <Proxy group="filters" name="VofTracking"/>
+            <Proxy group="filters" name="VofBoundary" omit_from_toolbar="1"/>
+            <Proxy group="filters" name="VofMaxVelocity" omit_from_toolbar="1"/>
             <Proxy group="filters" name="Plic"/>
             <Proxy group="filters" name="Plic3"/>
         </Category>

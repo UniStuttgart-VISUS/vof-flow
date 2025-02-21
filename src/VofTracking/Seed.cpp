@@ -6,7 +6,6 @@
 
 #include <vtkPointData.h>
 #include <vtkPoints.h>
-#include <vtkPolyData.h>
 
 #include "Constants.h"
 #include "Grid/GridIterator.h"
@@ -15,15 +14,17 @@
 #include "Plic/PlicUtil.h"
 #include "VtkUtil/VtkUtilArray.h"
 
-VofFlow::SeedCoordInfo::SeedCoordInfo(const DomainInfo& domainInfo, int refinement)
-    : domainInfo_(domainInfo),
-      refinement_(refinement) {
+VofFlow::SeedCoordInfo::SeedCoordInfo(const dim_t& globalCellDims, const bounds_t& globalBounds, int refinement)
+    : refinement_(refinement),
+      globalBounds_(globalBounds) {
     numPointsPerCellDim_ = calcNumPointsPerCellDim(refinement_);
-    const auto globalDims = Grid::extentDimensions(domainInfo_.globalExtent());
-    numPointsX_ = static_cast<vtkIdType>(globalDims[0]) * static_cast<vtkIdType>(numPointsPerCellDim_);
-    numPointsY_ = static_cast<vtkIdType>(globalDims[1]) * static_cast<vtkIdType>(numPointsPerCellDim_);
-    numPointsZ_ = static_cast<vtkIdType>(globalDims[2]) * static_cast<vtkIdType>(numPointsPerCellDim_);
+    numPointsX_ = static_cast<vtkIdType>(globalCellDims[0]) * static_cast<vtkIdType>(numPointsPerCellDim_);
+    numPointsY_ = static_cast<vtkIdType>(globalCellDims[1]) * static_cast<vtkIdType>(numPointsPerCellDim_);
+    numPointsZ_ = static_cast<vtkIdType>(globalCellDims[2]) * static_cast<vtkIdType>(numPointsPerCellDim_);
 }
+
+VofFlow::SeedCoordInfo::SeedCoordInfo(const DomainInfo& domainInfo, int refinement)
+    : SeedCoordInfo(domainInfo.globalCellDims(), domainInfo.globalBounds(), refinement) {}
 
 VofFlow::SeedPoints::SeedPoints() {
     points = createVtkArray<vtkFloatArray>(ArrayNames::POINTS, 3);
@@ -88,24 +89,20 @@ std::unique_ptr<VofFlow::SeedPoints> VofFlow::generateSeedPoints(const DomainInf
     auto seedPoints = std::make_unique<SeedPoints>();
 
     // Loop over zero extent cells
-    const auto& extLocal = domainInfo.localExtent();
-    const auto& extZero = domainInfo.localZeroExtent();
-    for (const gridCoords_t& e_coords : GridRange(extZero)) {
+    for (const gridCoords_t& e_coords : GridRange(domainInfo.localZeroExtent())) {
         // Grid coords
-        const int g_x = e_coords[0] - extLocal[0];
-        const int g_y = e_coords[1] - extLocal[2];
-        const int g_z = e_coords[2] - extLocal[4];
+        const auto grid_coords = domainInfo.localExtentCoordToGridCoord(e_coords);
+        const auto globalGridCoords = Grid::add(grid_coords, domainInfo.localCellDimsOffset());
 
-        const auto gridIdx = domainInfo.gridCoordToIdx(g_x, g_y, g_z);
-
-        const auto& plicResult = calcPlicOrPlic3CellClass(domainInfo, {g_x, g_y, g_z}, vofData, eps, numIterations);
+        const auto& plicResult = calcPlicOrPlic3CellClass(domainInfo, grid_coords, vofData, eps, numIterations);
 
         if (plicResult.cellClass == CellClass::EMPTY) {
             continue;
         }
 
-        const auto cellStart = domainInfo.coordsVec3(g_x, g_y, g_z);
-        const auto cellSize = domainInfo.cellSizeVec3(g_x, g_y, g_z);
+        const auto gridIdx = domainInfo.gridCoordToIdx(grid_coords);
+        const auto cellStart = domainInfo.coordsVec3(grid_coords);
+        const auto cellSize = domainInfo.cellSizeVec3(grid_coords);
         for (int x = 0; x < numPointsPerDim; x++) {
             for (int y = 0; y < numPointsPerDim; y++) {
                 for (int z = 0; z < numPointsPerDim; z++) {
@@ -116,9 +113,9 @@ std::unique_ptr<VofFlow::SeedPoints> VofFlow::generateSeedPoints(const DomainInf
                     }
 
                     // Seed coords
-                    const int s_x = e_coords[0] * numPointsPerDim + x;
-                    const int s_y = e_coords[1] * numPointsPerDim + y;
-                    const int s_z = e_coords[2] * numPointsPerDim + z;
+                    const int s_x = globalGridCoords[0] * numPointsPerDim + x;
+                    const int s_y = globalGridCoords[1] * numPointsPerDim + y;
+                    const int s_z = globalGridCoords[2] * numPointsPerDim + z;
 
                     seedPoints->gridIdxToSeedsMap[gridIdx].push_back(seedPoints->points->GetNumberOfTuples());
                     seedPoints->points->InsertNextTypedTuple(pos.data());
