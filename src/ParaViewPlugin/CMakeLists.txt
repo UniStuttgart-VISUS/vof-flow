@@ -3,7 +3,7 @@ cmake_policy(PUSH)
 cmake_policy(VERSION 3.12...3.31)
 
 paraview_add_plugin(VofFlow
-  VERSION "1.1"
+  VERSION "1.2"
   SERVER_MANAGER_XML VofFlow.xml
   MODULES
     VofFlow::VofDataUtils

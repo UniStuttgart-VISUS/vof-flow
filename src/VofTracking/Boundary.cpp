@@ -116,7 +116,7 @@ VofFlow::BoundarySeedPoints VofFlow::exchangeBoundarySeeds(const DomainInfo& dom
 }
 
 vtkSmartPointer<vtkPolyData> VofFlow::generateBoundary(const SeedCoordInfo& seedInfo, const BoundarySeedPoints& seeds,
-    const BoundarySeedPoints& neighborSeeds, int method) {
+    const BoundarySeedPoints& neighborSeeds, int method, bool isUniform) {
     ZoneScoped;
 
     // Fast return if no seed points
@@ -124,8 +124,12 @@ vtkSmartPointer<vtkPolyData> VofFlow::generateBoundary(const SeedCoordInfo& seed
         return vtkSmartPointer<vtkPolyData>::New();
     }
 
-    const auto& [seedGrid, maxLabel] = generateSeedGrid(seedInfo, seeds, neighborSeeds);
-    return generateDiscreteIsosurface(seedGrid, maxLabel, method);
+    const auto& [seedGrid, maxLabel] = generateSeedGrid(seedInfo, seeds, neighborSeeds, isUniform);
+    auto boundaries = generateDiscreteIsosurface(seedGrid, maxLabel, method);
+    if (!isUniform) {
+        applyNonUniformGrid(seedInfo, boundaries);
+    }
+    return boundaries;
 }
 
 VofFlow::extent_t VofFlow::getSeedPointsBoundingBox(const SeedCoordInfo& seedInfo,
@@ -156,13 +160,14 @@ VofFlow::extent_t VofFlow::getSeedPointsBoundingBox(const SeedCoordInfo& seedInf
 }
 
 std::tuple<vtkSmartPointer<vtkImageData>, int> VofFlow::generateSeedGrid(const SeedCoordInfo& seedInfo,
-    const BoundarySeedPoints& seeds, const BoundarySeedPoints& neighborSeeds) {
+    const BoundarySeedPoints& seeds, const BoundarySeedPoints& neighborSeeds, bool isUniform) {
     ZoneScoped;
 
     if (seeds.seedIdx->GetNumberOfTuples() == 0) {
         return {nullptr, -1};
     }
 
+    // Calc bounding box (in seed coords)
     extent_t seedsBoundingBox = getSeedPointsBoundingBox(seedInfo, seeds.seedIdx);
     seedsBoundingBox = getSeedPointsBoundingBox(seedInfo, neighborSeeds.seedIdx, seedsBoundingBox);
 
@@ -181,17 +186,29 @@ std::tuple<vtkSmartPointer<vtkImageData>, int> VofFlow::generateSeedGrid(const S
 
     const auto& gBounds = seedInfo.globalBounds();
 
-    // TODO this assumes uniform grid
-    const std::array<double, 3> spacing{
-        (gBounds[1] - gBounds[0]) / static_cast<double>(seedInfo.numPointsX()),
-        (gBounds[3] - gBounds[2]) / static_cast<double>(seedInfo.numPointsY()),
-        (gBounds[5] - gBounds[4]) / static_cast<double>(seedInfo.numPointsZ()),
-    };
-    const std::array<double, 3> origin{
-        gBounds[0] + (static_cast<double>(image_min[0]) + 0.5) * spacing[0],
-        gBounds[2] + (static_cast<double>(image_min[1]) + 0.5) * spacing[1],
-        gBounds[4] + (static_cast<double>(image_min[2]) + 0.5) * spacing[2],
-    };
+    std::array<double, 3> spacing{};
+    std::array<double, 3> origin{};
+    if (isUniform) {
+        // If the output grid is uniform we can directly initialize the image data grid to correct coords.
+        spacing = {
+            (gBounds[1] - gBounds[0]) / static_cast<double>(seedInfo.numPointsX()),
+            (gBounds[3] - gBounds[2]) / static_cast<double>(seedInfo.numPointsY()),
+            (gBounds[5] - gBounds[4]) / static_cast<double>(seedInfo.numPointsZ()),
+        };
+        origin = {
+            gBounds[0] + (static_cast<double>(image_min[0]) + 0.5) * spacing[0],
+            gBounds[2] + (static_cast<double>(image_min[1]) + 0.5) * spacing[1],
+            gBounds[4] + (static_cast<double>(image_min[2]) + 0.5) * spacing[2],
+        };
+    } else {
+        // If the output grid is non-uniform, setup grid as continuous seed coords and reproject later
+        spacing = {1.0, 1.0, 1.0};
+        origin = {
+            static_cast<double>(image_min[0]),
+            static_cast<double>(image_min[1]),
+            static_cast<double>(image_min[2]),
+        };
+    }
 
     vtkSmartPointer<vtkImageData> seedGrid = vtkSmartPointer<vtkImageData>::New();
     seedGrid->SetDimensions(image_dim.data());
@@ -251,6 +268,36 @@ vtkSmartPointer<vtkPolyData> VofFlow::generateDiscreteIsosurface(const vtkSmartP
     }
 
     return result;
+}
+
+void VofFlow::applyNonUniformGrid(const SeedCoordInfo& seedInfo, const vtkSmartPointer<vtkPolyData>& bound) {
+    std::vector<double> seedCoordsX(seedInfo.numPointsX());
+    for (int i = 0; i < seedCoordsX.size(); i++) {
+        seedCoordsX[i] = seedInfo.seedCoordXToPosX(i);
+    }
+    std::vector<double> seedCoordsY(seedInfo.numPointsY());
+    for (int i = 0; i < seedCoordsY.size(); i++) {
+        seedCoordsY[i] = seedInfo.seedCoordYToPosY(i);
+    }
+    std::vector<double> seedCoordsZ(seedInfo.numPointsZ());
+    for (int i = 0; i < seedCoordsZ.size(); i++) {
+        seedCoordsZ[i] = seedInfo.seedCoordZToPosZ(i);
+    }
+
+    auto applyScale = [](double& p, const std::vector<double>& coords) {
+        const int idx = std::clamp(static_cast<int>(std::floor(p)), 0, static_cast<int>(coords.size() - 2));
+        const double diff = p - idx;
+        p = coords[idx] + diff * (coords[idx + 1] - coords[idx]);
+    };
+
+    for (vtkIdType i = 0; i < bound->GetNumberOfPoints(); i++) {
+        posCoords_t p{};
+        bound->GetPoints()->GetPoint(i, p.data());
+        applyScale(p[0], seedCoordsX);
+        applyScale(p[1], seedCoordsY);
+        applyScale(p[2], seedCoordsZ);
+        bound->GetPoints()->SetPoint(i, p.data());
+    }
 }
 
 void VofFlow::makePolyGap(const vtkSmartPointer<vtkPolyData>& bound, const vtkSmartPointer<vtkImageData>& seedGrid) {

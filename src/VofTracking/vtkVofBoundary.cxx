@@ -65,19 +65,26 @@ int vtkVofBoundary::RequestData(vtkInformation* request, vtkInformationVector** 
 
         auto ext = state["domain"]["GlobalExtent"].get<VofFlow::extent_t>();
         auto bounds = state["domain"]["GlobalBounds"].get<VofFlow::bounds_t>();
+        auto gCoordsX = state["domain"]["GlobalCoordsX"].get<std::vector<double>>();
+        auto gCoordsY = state["domain"]["GlobalCoordsY"].get<std::vector<double>>();
+        auto gCoordsZ = state["domain"]["GlobalCoordsZ"].get<std::vector<double>>();
+        auto isUniform = state["domain"]["IsUniform"].get<bool>();
         auto r = state["parameters"]["Refinement"].get<int>();
 
         // Output image
-        VofFlow::SeedCoordInfo seedInfo(VofFlow::Grid::extentDimensions(ext), bounds, r);
+        VofFlow::SeedCoordInfo seedInfo(VofFlow::Grid::extentDimensions(ext), bounds, gCoordsX, gCoordsY, gCoordsZ, r);
         VofFlow::BoundarySeedPoints seeds(seed_idx, labels);
         VofFlow::BoundarySeedPoints neighborDummy;
 
-        const auto& [seedGrid, maxLabel] = generateSeedGrid(seedInfo, seeds, neighborDummy);
+        const auto& [seedGrid, maxLabel] = generateSeedGrid(seedInfo, seeds, neighborDummy, isUniform);
 
         // Always use with DiscreteFlyingEdges3D as method! Marching cubes produces cell data with shared points.
         // Flying edges produces points data labels and unique points for each label. This is required for
         // postprocessing.
         vtkSmartPointer<vtkPolyData> bound = VofFlow::generateDiscreteIsosurface(seedGrid, maxLabel, 2);
+        if (!isUniform) {
+            VofFlow::applyNonUniformGrid(seedInfo, bound);
+        }
 
         if (BoundaryMode > 0) {
             VofFlow::makePolyGap(bound, seedGrid);

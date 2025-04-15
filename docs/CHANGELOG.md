@@ -1,5 +1,9 @@
 # Changelog
 
+## Version 1.2.0
+
+- Add support for non-uniform grids.
+
 ## Version 1.1.0
 
 - Refactor component extraction to generate label names ordered by global grid position to improve reproducibility.

@@ -511,8 +511,8 @@ int vtkVofTracking::RequestData(vtkInformation* request, vtkInformationVector** 
                     exchangeBoundarySeeds(*domainInfo_, *seedInfo_, boundarySeedPoints, mpiController_);
             }
 
-            vtkSmartPointer<vtkPolyData> boundaries =
-                VofFlow::generateBoundary(*seedInfo_, boundarySeedPoints, neighborBoundarySeedPoints, BoundaryMethod);
+            vtkSmartPointer<vtkPolyData> boundaries = VofFlow::generateBoundary(*seedInfo_, boundarySeedPoints,
+                neighborBoundarySeedPoints, BoundaryMethod, domainInfo_->isUniform());
             // Clamp ghost cells
             bool clipGhost = false;
             if (clipGhost) {
@@ -647,6 +647,9 @@ std::string vtkVofTracking::stateJson() const {
     domain["LocalCellDimsOffset"] = domainInfo_->localCellDimsOffset();
     domain["IsUniform"] = domainInfo_->isUniform();
     domain["IsParallel"] = domainInfo_->isParallel();
+    domain["GlobalCoordsX"] = domainInfo_->globalCoordsX();
+    domain["GlobalCoordsY"] = domainInfo_->globalCoordsY();
+    domain["GlobalCoordsZ"] = domainInfo_->globalCoordsZ();
     json mpi;
     if (domainInfo_->isParallel()) {
         mpi["NumberOfProcesses"] = mpiController_->GetNumberOfProcesses();

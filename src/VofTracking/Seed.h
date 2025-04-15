@@ -20,7 +20,9 @@
 namespace VofFlow {
     class SeedCoordInfo {
     public:
-        SeedCoordInfo(const dim_t& globalCellDims, const bounds_t& globalBounds, int refinement);
+        SeedCoordInfo(const dim_t& globalCellDims, const bounds_t& globalBounds,
+            const std::vector<double>& globalCoordsX, const std::vector<double>& globalCoordsY,
+            const std::vector<double>& globalCoordsZ, int refinement);
         SeedCoordInfo(const DomainInfo& domainInfo, int refinement);
 
         [[nodiscard]] int numPointsPerCellDim() const {
@@ -55,9 +57,30 @@ namespace VofFlow {
             return {x, y, z};
         }
 
+        [[nodiscard]] inline double seedCoordXToPosX(int s_x) const {
+            return seedCoordNToPosN(s_x, numPointsX_, globalCoordsX_);
+        }
+
+        [[nodiscard]] inline double seedCoordYToPosY(int s_y) const {
+            return seedCoordNToPosN(s_y, numPointsY_, globalCoordsY_);
+        }
+
+        [[nodiscard]] inline double seedCoordZToPosZ(int s_z) const {
+            return seedCoordNToPosN(s_z, numPointsZ_, globalCoordsZ_);
+        }
+
     private:
         static inline int calcNumPointsPerCellDim(int refinement) {
             return std::max(0, refinement) + 1;
+        }
+
+        [[nodiscard]] inline double seedCoordNToPosN(int s_n, vtkIdType numPoints,
+            const std::vector<double>& globalCoords) const {
+            s_n = std::clamp(s_n, 0, static_cast<int>(numPoints) - 1);
+            const int cellIdx = s_n / numPointsPerCellDim_;
+            const int offsetIdx = s_n % numPointsPerCellDim_;
+            const double relPos = (static_cast<double>(offsetIdx) + 0.5) / static_cast<double>(numPointsPerCellDim_);
+            return (1.0 - relPos) * globalCoords[cellIdx] + relPos * globalCoords[cellIdx + 1];
         }
 
         int refinement_;
@@ -66,6 +89,9 @@ namespace VofFlow {
         vtkIdType numPointsY_;
         vtkIdType numPointsZ_;
         bounds_t globalBounds_;
+        std::vector<double> globalCoordsX_;
+        std::vector<double> globalCoordsY_;
+        std::vector<double> globalCoordsZ_;
     };
 
     struct SeedPoints {

@@ -282,6 +282,63 @@ VofFlow::DomainInfo::DomainInfo(vtkDataSet* dataset, vtkMPIController* mpiContro
             }
         }
     }
+
+    // Collect global coords
+    globalCoordsX_ = std::vector<double>(globalDims_[0] + 1, 0.0);
+    globalCoordsY_ = std::vector<double>(globalDims_[1] + 1, 0.0);
+    globalCoordsZ_ = std::vector<double>(globalDims_[2] + 1, 0.0);
+    if (processId == 0) {
+        // Copy process 0 coords to global
+        std::memcpy(globalCoordsX_.data() + localDimsOffset_[0], coordsX_.data(), sizeof(double) * coordsX_.size());
+        std::memcpy(globalCoordsY_.data() + localDimsOffset_[1], coordsY_.data(), sizeof(double) * coordsY_.size());
+        std::memcpy(globalCoordsZ_.data() + localDimsOffset_[2], coordsZ_.data(), sizeof(double) * coordsZ_.size());
+        // Receive from other processes
+        std::array<int, 2> offsetSize{0, 0};
+        for (int p = 1; p < numProcesses; p++) {
+            mpiController->Receive(offsetSize.data(), 2, p, 10000);
+            if (offsetSize[1] > 0) {
+                mpiController->Receive(globalCoordsX_.data() + offsetSize[0], offsetSize[1], p, 10001);
+            }
+            mpiController->Receive(offsetSize.data(), 2, p, 10002);
+            if (offsetSize[1] > 0) {
+                mpiController->Receive(globalCoordsY_.data() + offsetSize[0], offsetSize[1], p, 10003);
+            }
+            mpiController->Receive(offsetSize.data(), 2, p, 10004);
+            if (offsetSize[1] > 0) {
+                mpiController->Receive(globalCoordsZ_.data() + offsetSize[0], offsetSize[1], p, 10005);
+            }
+        }
+    } else {
+        const bool isXMin = globalExtent_[0] == localZeroExtent_[0];
+        const bool isYMin = globalExtent_[2] == localZeroExtent_[2];
+        const bool isZMin = globalExtent_[4] == localZeroExtent_[4];
+        std::array<int, 2> offsetSize{0, 0};
+        constexpr std::array<int, 2> zeroOffsetSize{0, 0};
+        if (isYMin && isZMin) {
+            offsetSize = {localDimsOffset_[0], static_cast<int>(coordsX_.size())};
+            mpiController->Send(offsetSize.data(), 2, 0, 10000);
+            mpiController->Send(coordsX_.data(), static_cast<vtkIdType>(coordsX_.size()), 0, 10001);
+        } else {
+            mpiController->Send(zeroOffsetSize.data(), 2, 0, 10000);
+        }
+        if (isXMin && isZMin) {
+            offsetSize = {localDimsOffset_[1], static_cast<int>(coordsY_.size())};
+            mpiController->Send(offsetSize.data(), 2, 0, 10002);
+            mpiController->Send(coordsY_.data(), static_cast<vtkIdType>(coordsY_.size()), 0, 10003);
+        } else {
+            mpiController->Send(zeroOffsetSize.data(), 2, 0, 10002);
+        }
+        if (isXMin && isYMin) {
+            offsetSize = {localDimsOffset_[2], static_cast<int>(coordsZ_.size())};
+            mpiController->Send(offsetSize.data(), 2, 0, 10004);
+            mpiController->Send(coordsZ_.data(), static_cast<vtkIdType>(coordsZ_.size()), 0, 10005);
+        } else {
+            mpiController->Send(zeroOffsetSize.data(), 2, 0, 10004);
+        }
+    }
+    mpiController->Broadcast(globalCoordsX_.data(), static_cast<vtkIdType>(globalCoordsX_.size()), 0);
+    mpiController->Broadcast(globalCoordsY_.data(), static_cast<vtkIdType>(globalCoordsY_.size()), 0);
+    mpiController->Broadcast(globalCoordsZ_.data(), static_cast<vtkIdType>(globalCoordsZ_.size()), 0);
 }
 
 void VofFlow::DomainInfo::createImageData() {

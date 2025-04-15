@@ -14,9 +14,14 @@
 #include "Plic/PlicUtil.h"
 #include "VtkUtil/VtkUtilArray.h"
 
-VofFlow::SeedCoordInfo::SeedCoordInfo(const dim_t& globalCellDims, const bounds_t& globalBounds, int refinement)
+VofFlow::SeedCoordInfo::SeedCoordInfo(const dim_t& globalCellDims, const bounds_t& globalBounds,
+    const std::vector<double>& globalCoordsX, const std::vector<double>& globalCoordsY,
+    const std::vector<double>& globalCoordsZ, int refinement)
     : refinement_(refinement),
-      globalBounds_(globalBounds) {
+      globalBounds_(globalBounds),
+      globalCoordsX_(globalCoordsX),
+      globalCoordsY_(globalCoordsY),
+      globalCoordsZ_(globalCoordsZ) {
     numPointsPerCellDim_ = calcNumPointsPerCellDim(refinement_);
     numPointsX_ = static_cast<vtkIdType>(globalCellDims[0]) * static_cast<vtkIdType>(numPointsPerCellDim_);
     numPointsY_ = static_cast<vtkIdType>(globalCellDims[1]) * static_cast<vtkIdType>(numPointsPerCellDim_);
@@ -24,7 +29,8 @@ VofFlow::SeedCoordInfo::SeedCoordInfo(const dim_t& globalCellDims, const bounds_
 }
 
 VofFlow::SeedCoordInfo::SeedCoordInfo(const DomainInfo& domainInfo, int refinement)
-    : SeedCoordInfo(domainInfo.globalCellDims(), domainInfo.globalBounds(), refinement) {}
+    : SeedCoordInfo(domainInfo.globalCellDims(), domainInfo.globalBounds(), domainInfo.globalCoordsX(),
+          domainInfo.globalCoordsY(), domainInfo.globalCoordsZ(), refinement) {}
 
 VofFlow::SeedPoints::SeedPoints() {
     points = createVtkArray<vtkFloatArray>(ArrayNames::POINTS, 3);

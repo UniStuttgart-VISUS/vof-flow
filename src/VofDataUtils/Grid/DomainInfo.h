@@ -130,6 +130,18 @@ namespace VofFlow {
             return cellCentersZ_;
         }
 
+        [[nodiscard]] inline const std::vector<double>& globalCoordsX() const {
+            return isParallel_ ? globalCoordsX_ : coordsX_;
+        }
+
+        [[nodiscard]] inline const std::vector<double>& globalCoordsY() const {
+            return isParallel_ ? globalCoordsY_ : coordsY_;
+        }
+
+        [[nodiscard]] inline const std::vector<double>& globalCoordsZ() const {
+            return isParallel_ ? globalCoordsZ_ : coordsZ_;
+        }
+
         [[nodiscard]] inline const std::vector<NeighborInfo>& neighbors() const {
             return neighbors_;
         }
@@ -447,6 +459,9 @@ namespace VofFlow {
         std::vector<double> cellCentersX_;
         std::vector<double> cellCentersY_;
         std::vector<double> cellCentersZ_;
+        std::vector<double> globalCoordsX_;
+        std::vector<double> globalCoordsY_;
+        std::vector<double> globalCoordsZ_;
 
         std::vector<NeighborInfo> neighbors_;
         std::array<std::vector<int>, 6> neighborsByDirection_; // list neighbors by direction
